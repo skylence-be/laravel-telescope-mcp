@@ -7,6 +7,9 @@ namespace Skylence\TelescopeMcp\MCP;
 use Skylence\TelescopeMcp\MCP\Tools\AbstractTool;
 use Skylence\TelescopeMcp\MCP\Tools\EchoTool;
 use Skylence\TelescopeMcp\MCP\Tools\PingTool;
+use Skylence\TelescopeMcp\MCP\Tools\RequestsTool;
+use Skylence\TelescopeMcp\Services\PaginationManager;
+use Skylence\TelescopeMcp\Services\ResponseFormatter;
 
 final class TelescopeMcpServer
 {
@@ -32,6 +35,15 @@ final class TelescopeMcpServer
     {
         $this->registerTool(new PingTool());
         $this->registerTool(new EchoTool());
+
+        // Register Telescope tools if available
+        if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+            $config = config('telescope-mcp', []);
+            $pagination = app(PaginationManager::class);
+            $formatter = app(ResponseFormatter::class);
+
+            $this->registerTool(new RequestsTool($config, $pagination, $formatter));
+        }
     }
 
     /**
