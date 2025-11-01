@@ -21,12 +21,13 @@ Route::post('/tools/{tool}', [McpController::class, 'executeTool'])
 // Catch-all route for debugging
 Route::any('{any}', function () {
     if (config('telescope-mcp.logging.enabled', true)) {
-        \Illuminate\Support\Facades\Log::channel(config('telescope-mcp.logging.channel', 'stack'))
-            ->info('MCP Route not found', [
-                'method' => request()->method(),
-                'path' => request()->path(),
-                'input' => request()->all(),
-            ]);
+        \Illuminate\Support\Facades\Log::channel(
+            config('telescope-mcp.logging.error_channel', 'telescope-mcp-error')
+        )->warning('MCP Route not found', [
+            'method' => request()->method(),
+            'path' => request()->path(),
+            'input' => request()->all(),
+        ]);
     }
 
     return response()->json(['error' => 'Route not found'], 404);

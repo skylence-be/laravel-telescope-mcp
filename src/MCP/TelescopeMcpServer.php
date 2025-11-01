@@ -55,10 +55,11 @@ final class TelescopeMcpServer
             } catch (\Exception $e) {
                 // Log error but don't fail - Telescope might not be configured
                 if (config('telescope-mcp.logging.enabled', true)) {
-                    \Illuminate\Support\Facades\Log::channel(config('telescope-mcp.logging.channel', 'stack'))
-                        ->warning('Failed to register Telescope tools', [
-                            'error' => $e->getMessage(),
-                        ]);
+                    \Illuminate\Support\Facades\Log::channel(
+                        config('telescope-mcp.logging.error_channel', 'telescope-mcp-error')
+                    )->warning('Failed to register Telescope tools', [
+                        'error' => $e->getMessage(),
+                    ]);
                 }
             }
         }
