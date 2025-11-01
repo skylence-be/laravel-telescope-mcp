@@ -6,9 +6,11 @@ namespace Skylence\TelescopeMcp\MCP;
 
 use Skylence\TelescopeMcp\MCP\Tools\AbstractTool;
 use Skylence\TelescopeMcp\MCP\Tools\EchoTool;
+use Skylence\TelescopeMcp\MCP\Tools\ExceptionsTool;
 use Skylence\TelescopeMcp\MCP\Tools\LogsTool;
 use Skylence\TelescopeMcp\MCP\Tools\MaintenanceTool;
 use Skylence\TelescopeMcp\MCP\Tools\PingTool;
+use Skylence\TelescopeMcp\MCP\Tools\QueriesTool;
 use Skylence\TelescopeMcp\MCP\Tools\RequestsTool;
 use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
@@ -52,6 +54,8 @@ final class TelescopeMcpServer
 
                 $this->registerTool(new RequestsTool($config, $pagination, $formatter));
                 $this->registerTool(new LogsTool($config, $pagination, $formatter));
+                $this->registerTool(new ExceptionsTool($config, $pagination, $formatter));
+                $this->registerTool(new QueriesTool($config, $pagination, $formatter));
             } catch (\Exception $e) {
                 // Log error but don't fail - Telescope might not be configured
                 if (config('telescope-mcp.logging.enabled', true)) {

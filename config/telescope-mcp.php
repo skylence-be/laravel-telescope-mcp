@@ -66,6 +66,17 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Slow Query Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Database queries taking longer than this threshold (in milliseconds)
+    | will be considered slow and can be retrieved with the 'slow' action.
+    |
+    */
+    'slow_query_ms' => env('TELESCOPE_MCP_SLOW_QUERY_MS', 100),
+
+    /*
+    |--------------------------------------------------------------------------
     | Authentication & Authorization
     |--------------------------------------------------------------------------
     |
