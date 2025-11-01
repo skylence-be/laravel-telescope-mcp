@@ -11,7 +11,7 @@ return [
     | The URI path where the MCP server will be accessible.
     |
     */
-    'path' => env('SIMPLE_MCP_PATH', 'telescope-mcp'),
+    'path' => env('TELESCOPE_MCP_PATH', 'telescope-mcp'),
 
     /*
     |--------------------------------------------------------------------------
@@ -21,7 +21,7 @@ return [
     | Control whether the MCP server is enabled.
     |
     */
-    'enabled' => env('SIMPLE_MCP_ENABLED', true),
+    'enabled' => env('TELESCOPE_MCP_ENABLED', true),
 
     /*
     |--------------------------------------------------------------------------
@@ -42,7 +42,7 @@ return [
     |
     */
     'logging' => [
-        'enabled' => env('SIMPLE_MCP_LOGGING_ENABLED', true),
-        'channel' => env('SIMPLE_MCP_LOGGING_CHANNEL', 'stack'),
+        'enabled' => env('TELESCOPE_MCP_LOGGING_ENABLED', true),
+        'channel' => env('TELESCOPE_MCP_LOGGING_CHANNEL', 'stack'),
     ],
 ];
