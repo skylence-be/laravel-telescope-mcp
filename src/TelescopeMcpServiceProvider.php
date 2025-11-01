@@ -6,6 +6,7 @@ namespace Skylence\TelescopeMcp;
 
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Skylence\TelescopeMcp\Http\Middleware\AuthenticateMcp;
 use Skylence\TelescopeMcp\MCP\TelescopeMcpServer;
 use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
@@ -66,6 +67,9 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
             __DIR__.'/../config/telescope-mcp.php' => config_path('telescope-mcp.php'),
         ], 'telescope-mcp-config');
 
+        // Register middleware
+        $this->app['router']->aliasMiddleware('telescope-mcp.auth', AuthenticateMcp::class);
+
         // Register routes
         $this->registerRoutes();
     }
@@ -75,9 +79,16 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
      */
     protected function registerRoutes(): void
     {
+        $middleware = config('telescope-mcp.middleware', ['api']);
+
+        // Add auth middleware if enabled
+        if (config('telescope-mcp.auth.enabled', true)) {
+            $middleware[] = 'telescope-mcp.auth';
+        }
+
         Route::group([
             'prefix' => config('telescope-mcp.path', 'telescope-mcp'),
-            'middleware' => config('telescope-mcp.middleware', ['api']),
+            'middleware' => $middleware,
         ], function () {
             $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
         });
