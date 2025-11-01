@@ -38,12 +38,19 @@ return [
     | Logging
     |--------------------------------------------------------------------------
     |
-    | Enable logging and configure the channel to use.
+    | Enable logging and configure separate channels for access and error logs.
+    | Access logs: info, debug (requests, responses, tool calls)
+    | Error logs: error, warning (failures, exceptions, auth issues)
+    |
+    | Logs are stored in:
+    | - storage/logs/telescope-mcp-access.log
+    | - storage/logs/telescope-mcp-error.log
     |
     */
     'logging' => [
         'enabled' => env('TELESCOPE_MCP_LOGGING_ENABLED', true),
-        'channel' => env('TELESCOPE_MCP_LOGGING_CHANNEL', 'stack'),
+        'access_channel' => 'telescope-mcp-access',
+        'error_channel' => 'telescope-mcp-error',
     ],
 
     /*

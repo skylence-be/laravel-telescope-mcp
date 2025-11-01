@@ -4,6 +4,7 @@ declare(strict_types=1);
 
 namespace Skylence\TelescopeMcp;
 
+use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Skylence\TelescopeMcp\Http\Middleware\AuthenticateMcp;
@@ -24,11 +25,12 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
             'telescope-mcp'
         );
 
-        // Register Logger as singleton
+        // Register Logger as singleton with dual channels
         $this->app->singleton(Logger::class, function ($app) {
             return new Logger(
                 config('telescope-mcp.logging.enabled', true),
-                config('telescope-mcp.logging.channel', 'stack')
+                config('telescope-mcp.logging.access_channel', 'telescope-mcp-access'),
+                config('telescope-mcp.logging.error_channel', 'telescope-mcp-error')
             );
         });
 
@@ -62,6 +64,9 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
             return;
         }
 
+        // Configure logging channels
+        $this->configureLogging();
+
         // Publish configuration
         $this->publishes([
             __DIR__.'/../config/telescope-mcp.php' => config_path('telescope-mcp.php'),
@@ -72,6 +77,34 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
 
         // Register routes
         $this->registerRoutes();
+    }
+
+    /**
+     * Configure logging channels for the package.
+     */
+    protected function configureLogging(): void
+    {
+        if (! config('telescope-mcp.logging.enabled', true)) {
+            return;
+        }
+
+        // Add access log channel
+        Config::set('logging.channels.telescope-mcp-access', [
+            'driver' => 'daily',
+            'path' => storage_path('logs/telescope-mcp-access.log'),
+            'level' => 'debug',
+            'days' => 14,
+            'permission' => 0644,
+        ]);
+
+        // Add error log channel
+        Config::set('logging.channels.telescope-mcp-error', [
+            'driver' => 'daily',
+            'path' => storage_path('logs/telescope-mcp-error.log'),
+            'level' => 'warning',
+            'days' => 30,
+            'permission' => 0644,
+        ]);
     }
 
     /**
