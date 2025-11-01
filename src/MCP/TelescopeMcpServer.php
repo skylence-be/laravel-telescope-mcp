@@ -5,13 +5,23 @@ declare(strict_types=1);
 namespace Skylence\TelescopeMcp\MCP;
 
 use Skylence\TelescopeMcp\MCP\Tools\AbstractTool;
+use Skylence\TelescopeMcp\MCP\Tools\CacheTool;
+use Skylence\TelescopeMcp\MCP\Tools\CommandsTool;
 use Skylence\TelescopeMcp\MCP\Tools\EchoTool;
+use Skylence\TelescopeMcp\MCP\Tools\EventsTool;
 use Skylence\TelescopeMcp\MCP\Tools\ExceptionsTool;
+use Skylence\TelescopeMcp\MCP\Tools\GatesTool;
+use Skylence\TelescopeMcp\MCP\Tools\JobsTool;
 use Skylence\TelescopeMcp\MCP\Tools\LogsTool;
 use Skylence\TelescopeMcp\MCP\Tools\MaintenanceTool;
+use Skylence\TelescopeMcp\MCP\Tools\ModelsTool;
+use Skylence\TelescopeMcp\MCP\Tools\NotificationsTool;
 use Skylence\TelescopeMcp\MCP\Tools\PingTool;
 use Skylence\TelescopeMcp\MCP\Tools\QueriesTool;
+use Skylence\TelescopeMcp\MCP\Tools\RedisTool;
 use Skylence\TelescopeMcp\MCP\Tools\RequestsTool;
+use Skylence\TelescopeMcp\MCP\Tools\ScheduleTool;
+use Skylence\TelescopeMcp\MCP\Tools\ViewsTool;
 use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
 
@@ -56,6 +66,16 @@ final class TelescopeMcpServer
                 $this->registerTool(new LogsTool($config, $pagination, $formatter));
                 $this->registerTool(new ExceptionsTool($config, $pagination, $formatter));
                 $this->registerTool(new QueriesTool($config, $pagination, $formatter));
+                $this->registerTool(new CommandsTool($config, $pagination, $formatter));
+                $this->registerTool(new ScheduleTool($config, $pagination, $formatter));
+                $this->registerTool(new JobsTool($config, $pagination, $formatter));
+                $this->registerTool(new CacheTool($config, $pagination, $formatter));
+                $this->registerTool(new EventsTool($config, $pagination, $formatter));
+                $this->registerTool(new GatesTool($config, $pagination, $formatter));
+                $this->registerTool(new ModelsTool($config, $pagination, $formatter));
+                $this->registerTool(new NotificationsTool($config, $pagination, $formatter));
+                $this->registerTool(new RedisTool($config, $pagination, $formatter));
+                $this->registerTool(new ViewsTool($config, $pagination, $formatter));
             } catch (\Exception $e) {
                 // Log error but don't fail - Telescope might not be configured
                 if (config('telescope-mcp.logging.enabled', true)) {
