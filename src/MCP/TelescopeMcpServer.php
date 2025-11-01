@@ -6,6 +6,8 @@ namespace Skylence\TelescopeMcp\MCP;
 
 use Skylence\TelescopeMcp\MCP\Tools\AbstractTool;
 use Skylence\TelescopeMcp\MCP\Tools\EchoTool;
+use Skylence\TelescopeMcp\MCP\Tools\LogsTool;
+use Skylence\TelescopeMcp\MCP\Tools\MaintenanceTool;
 use Skylence\TelescopeMcp\MCP\Tools\PingTool;
 use Skylence\TelescopeMcp\MCP\Tools\RequestsTool;
 use Skylence\TelescopeMcp\Services\PaginationManager;
@@ -36,6 +38,11 @@ final class TelescopeMcpServer
         $this->registerTool(new PingTool());
         $this->registerTool(new EchoTool());
 
+        // Register maintenance tool (doesn't require Telescope to be configured)
+        if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+            $this->registerTool(new MaintenanceTool());
+        }
+
         // Register Telescope tools if available
         if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
             try {
@@ -44,6 +51,7 @@ final class TelescopeMcpServer
                 $formatter = app(ResponseFormatter::class);
 
                 $this->registerTool(new RequestsTool($config, $pagination, $formatter));
+                $this->registerTool(new LogsTool($config, $pagination, $formatter));
             } catch (\Exception $e) {
                 // Log error but don't fail - Telescope might not be configured
                 if (config('telescope-mcp.logging.enabled', true)) {
