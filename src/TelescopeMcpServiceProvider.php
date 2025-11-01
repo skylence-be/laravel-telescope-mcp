@@ -7,6 +7,9 @@ namespace Skylence\TelescopeMcp;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Skylence\TelescopeMcp\Console\Commands\TelescopeClearCommand;
+use Skylence\TelescopeMcp\Console\Commands\TelescopePruneCommand;
+use Skylence\TelescopeMcp\Console\Commands\TelescopeStatsCommand;
 use Skylence\TelescopeMcp\Http\Middleware\AuthenticateMcp;
 use Skylence\TelescopeMcp\MCP\TelescopeMcpServer;
 use Skylence\TelescopeMcp\Services\PaginationManager;
@@ -77,6 +80,15 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
 
         // Register routes
         $this->registerRoutes();
+
+        // Register artisan commands
+        if ($this->app->runningInConsole()) {
+            $this->commands([
+                TelescopePruneCommand::class,
+                TelescopeStatsCommand::class,
+                TelescopeClearCommand::class,
+            ]);
+        }
     }
 
     /**
