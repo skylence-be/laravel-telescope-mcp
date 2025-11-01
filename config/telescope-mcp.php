@@ -56,4 +56,20 @@ return [
     |
     */
     'slow_request_ms' => env('TELESCOPE_MCP_SLOW_REQUEST_MS', 1000),
+
+    /*
+    |--------------------------------------------------------------------------
+    | Authentication & Authorization
+    |--------------------------------------------------------------------------
+    |
+    | Configure access control for the MCP endpoints. When enabled, requests
+    | must include a valid bearer token or X-MCP-Token header.
+    |
+    | Generate a secure token: php artisan tinker --execute="echo bin2hex(random_bytes(32))"
+    |
+    */
+    'auth' => [
+        'enabled' => env('TELESCOPE_MCP_AUTH_ENABLED', true),
+        'token' => env('TELESCOPE_MCP_API_TOKEN'),
+    ],
 ];
