@@ -7,6 +7,8 @@ namespace Skylence\TelescopeMcp;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Skylence\TelescopeMcp\MCP\TelescopeMcpServer;
+use Skylence\TelescopeMcp\Services\PaginationManager;
+use Skylence\TelescopeMcp\Services\ResponseFormatter;
 use Skylence\TelescopeMcp\Support\Logger;
 
 final class TelescopeMcpServiceProvider extends ServiceProvider
@@ -27,6 +29,21 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
                 config('telescope-mcp.logging.enabled', true),
                 config('telescope-mcp.logging.channel', 'stack')
             );
+        });
+
+        // Register PaginationManager
+        $this->app->singleton(PaginationManager::class, function ($app) {
+            return new PaginationManager([
+                'default' => 10,
+                'maximum' => 25,
+            ]);
+        });
+
+        // Register ResponseFormatter
+        $this->app->singleton(ResponseFormatter::class, function ($app) {
+            return new ResponseFormatter([
+                'summary_threshold' => 5,
+            ]);
         });
 
         // Register TelescopeMcpServer
