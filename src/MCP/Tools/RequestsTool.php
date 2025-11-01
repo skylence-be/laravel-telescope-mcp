@@ -152,52 +152,75 @@ final class RequestsTool extends TelescopeAbstractTool
      */
     public function stats(array $arguments = []): array
     {
-        $entries = $this->normalizeEntries($this->getEntries($arguments));
+        try {
+            $entries = $this->normalizeEntries($this->getEntries($arguments));
 
-        if (empty($entries)) {
-            return $this->formatter->formatStats([]);
-        }
-
-        $durations = array_map(fn ($e) => $e['content']['duration'] ?? 0, $entries);
-        $memories = array_map(fn ($e) => $e['content']['memory'] ?? 0, $entries);
-        $statuses = array_map(fn ($e) => $e['content']['response_status'] ?? 0, $entries);
-
-        $statusCounts = array_count_values($statuses);
-        $successCount = 0;
-        $errorCount = 0;
-
-        foreach ($statusCounts as $status => $count) {
-            if ($status >= 200 && $status < 400) {
-                $successCount += $count;
-            } elseif ($status >= 400) {
-                $errorCount += $count;
+            if (empty($entries)) {
+                return $this->formatter->formatStats([
+                    'total_requests' => 0,
+                    'message' => 'No requests found for the specified period',
+                ]);
             }
-        }
 
-        return $this->formatter->formatStats([
-            'total_requests' => count($entries),
-            'duration' => [
-                'avg' => array_sum($durations) / count($durations),
-                'min' => min($durations),
-                'max' => max($durations),
-                'p50' => $this->percentile($durations, 50),
-                'p95' => $this->percentile($durations, 95),
-                'p99' => $this->percentile($durations, 99),
-            ],
-            'memory' => [
-                'avg' => array_sum($memories) / count($memories),
-                'min' => min($memories),
-                'max' => max($memories),
-            ],
-            'status' => [
-                'success' => $successCount,
-                'error' => $errorCount,
-                'error_rate' => round(($errorCount / count($entries)) * 100, 2).'%',
-                'breakdown' => $statusCounts,
-            ],
-            'methods' => $this->getMethodBreakdown($entries),
-            'endpoints' => $this->getTopEndpoints($entries, 5),
-        ]);
+            $durations = array_filter(
+                array_map(fn ($e) => $e['content']['duration'] ?? 0, $entries),
+                fn ($d) => is_numeric($d)
+            );
+            $memories = array_filter(
+                array_map(fn ($e) => $e['content']['memory'] ?? 0, $entries),
+                fn ($m) => is_numeric($m)
+            );
+            $statuses = array_map(fn ($e) => $e['content']['response_status'] ?? 0, $entries);
+
+            // Ensure we have valid data
+            if (empty($durations)) {
+                $durations = [0];
+            }
+            if (empty($memories)) {
+                $memories = [0];
+            }
+
+            $statusCounts = array_count_values($statuses);
+            $successCount = 0;
+            $errorCount = 0;
+
+            foreach ($statusCounts as $status => $count) {
+                if ($status >= 200 && $status < 400) {
+                    $successCount += $count;
+                } elseif ($status >= 400) {
+                    $errorCount += $count;
+                }
+            }
+
+            $totalRequests = count($entries);
+
+            return $this->formatter->formatStats([
+                'total_requests' => $totalRequests,
+                'duration' => [
+                    'avg' => count($durations) > 0 ? array_sum($durations) / count($durations) : 0,
+                    'min' => count($durations) > 0 ? min($durations) : 0,
+                    'max' => count($durations) > 0 ? max($durations) : 0,
+                    'p50' => $this->percentile($durations, 50),
+                    'p95' => $this->percentile($durations, 95),
+                    'p99' => $this->percentile($durations, 99),
+                ],
+                'memory' => [
+                    'avg' => count($memories) > 0 ? array_sum($memories) / count($memories) : 0,
+                    'min' => count($memories) > 0 ? min($memories) : 0,
+                    'max' => count($memories) > 0 ? max($memories) : 0,
+                ],
+                'status' => [
+                    'success' => $successCount,
+                    'error' => $errorCount,
+                    'error_rate' => $totalRequests > 0 ? round(($errorCount / $totalRequests) * 100, 2).'%' : '0%',
+                    'breakdown' => $statusCounts,
+                ],
+                'methods' => $this->getMethodBreakdown($entries),
+                'endpoints' => $this->getTopEndpoints($entries, 5),
+            ]);
+        } catch (\Exception $e) {
+            return $this->formatError("Failed to calculate request statistics: {$e->getMessage()}");
+        }
     }
 
     /**

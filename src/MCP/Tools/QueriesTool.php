@@ -209,42 +209,62 @@ final class QueriesTool extends TelescopeAbstractTool
      */
     public function stats(array $arguments = []): array
     {
-        $entries = $this->normalizeEntries($this->getEntries($arguments));
+        try {
+            $entries = $this->normalizeEntries($this->getEntries($arguments));
 
-        if (empty($entries)) {
-            return $this->formatter->formatStats([]);
+            if (empty($entries)) {
+                return $this->formatter->formatStats([
+                    'total_queries' => 0,
+                    'message' => 'No queries found for the specified period',
+                ]);
+            }
+
+            $times = array_filter(
+                array_map(fn ($e) => $e['content']['time'] ?? 0, $entries),
+                fn ($t) => is_numeric($t)
+            );
+
+            // Ensure we have valid time data
+            if (empty($times)) {
+                $times = [0];
+            }
+
+            $connections = [];
+
+            foreach ($entries as $entry) {
+                $connection = $entry['content']['connection'] ?? 'unknown';
+                $connections[$connection] = ($connections[$connection] ?? 0) + 1;
+            }
+
+            $slowThreshold = $this->config['slow_query_ms'] ?? 100;
+            $slowCount = count(array_filter($entries, function ($entry) use ($slowThreshold) {
+                $time = $entry['content']['time'] ?? 0;
+
+                return is_numeric($time) && $time >= $slowThreshold;
+            }));
+
+            $totalQueries = count($entries);
+
+            return $this->formatter->formatStats([
+                'total_queries' => $totalQueries,
+                'time' => [
+                    'avg' => count($times) > 0 ? array_sum($times) / count($times) : 0,
+                    'min' => count($times) > 0 ? min($times) : 0,
+                    'max' => count($times) > 0 ? max($times) : 0,
+                    'total' => array_sum($times),
+                    'p50' => $this->percentile($times, 50),
+                    'p95' => $this->percentile($times, 95),
+                    'p99' => $this->percentile($times, 99),
+                ],
+                'connections' => $connections,
+                'slow_queries' => [
+                    'count' => $slowCount,
+                    'threshold_ms' => $slowThreshold,
+                    'percentage' => $totalQueries > 0 ? round(($slowCount / $totalQueries) * 100, 2).'%' : '0%',
+                ],
+            ]);
+        } catch (\Exception $e) {
+            return $this->formatError("Failed to calculate query statistics: {$e->getMessage()}");
         }
-
-        $times = array_map(fn ($e) => $e['content']['time'] ?? 0, $entries);
-        $connections = [];
-
-        foreach ($entries as $entry) {
-            $connection = $entry['content']['connection'] ?? 'unknown';
-            $connections[$connection] = ($connections[$connection] ?? 0) + 1;
-        }
-
-        $slowThreshold = $this->config['slow_query_ms'] ?? 100;
-        $slowCount = count(array_filter($entries, function ($entry) use ($slowThreshold) {
-            return ($entry['content']['time'] ?? 0) >= $slowThreshold;
-        }));
-
-        return $this->formatter->formatStats([
-            'total_queries' => count($entries),
-            'time' => [
-                'avg' => array_sum($times) / count($times),
-                'min' => min($times),
-                'max' => max($times),
-                'total' => array_sum($times),
-                'p50' => $this->percentile($times, 50),
-                'p95' => $this->percentile($times, 95),
-                'p99' => $this->percentile($times, 99),
-            ],
-            'connections' => $connections,
-            'slow_queries' => [
-                'count' => $slowCount,
-                'threshold_ms' => $slowThreshold,
-                'percentage' => round(($slowCount / count($entries)) * 100, 2).'%',
-            ],
-        ]);
     }
 }
