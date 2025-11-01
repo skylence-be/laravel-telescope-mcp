@@ -108,13 +108,20 @@ abstract class TelescopeAbstractTool extends AbstractTool
      */
     public function detail(string $id, array $arguments = []): array
     {
-        $entry = $this->storage->find($id);
+        try {
+            $entry = $this->storage->find($id);
 
-        if (! $entry) {
-            return $this->formatError("Entry not found: {$id}");
+            if (! $entry) {
+                return $this->formatError("Entry not found: {$id}");
+            }
+
+            // Normalize the entry to ensure consistent format
+            $normalizedEntry = $this->normalizeEntry($entry);
+
+            return $this->formatter->formatDetail($normalizedEntry);
+        } catch (\Exception $e) {
+            return $this->formatError("Error fetching entry details: {$e->getMessage()}");
         }
-
-        return $this->formatter->formatDetail($entry->toArray());
     }
 
     /**
@@ -134,22 +141,33 @@ abstract class TelescopeAbstractTool extends AbstractTool
      */
     public function search(array $arguments = []): array
     {
-        $query = $arguments['query'] ?? '';
-        $limit = $this->pagination->getLimit($arguments['limit'] ?? null);
+        try {
+            $query = $arguments['query'] ?? '';
+            $limit = $this->pagination->getLimit($arguments['limit'] ?? null);
+            $offset = $arguments['offset'] ?? 0;
 
-        $entries = $this->searchEntries($query, $arguments);
+            $allEntries = $this->searchEntries($query, $arguments);
+            $paginatedEntries = array_slice($allEntries, $offset, $limit);
 
-        $paginatedData = $this->pagination->paginate(
-            $this->formatter->formatList($entries, $this->getListFields()),
-            count($entries),
-            $limit,
-            0
-        );
+            $formatted = $this->formatter->formatList(
+                $paginatedEntries,
+                $this->getListFields()
+            );
 
-        return $this->formatResponse(
-            json_encode($paginatedData, JSON_PRETTY_PRINT),
-            $paginatedData
-        );
+            $paginatedData = $this->pagination->paginate(
+                $formatted,
+                count($allEntries),
+                $limit,
+                $offset
+            );
+
+            return $this->formatResponse(
+                json_encode($paginatedData, JSON_PRETTY_PRINT),
+                $paginatedData
+            );
+        } catch (\Exception $e) {
+            return $this->formatError("Search error: {$e->getMessage()}");
+        }
     }
 
     /**
@@ -230,16 +248,20 @@ abstract class TelescopeAbstractTool extends AbstractTool
     protected function searchEntries(string $query, array $filters): array
     {
         $entries = $this->getEntries($filters);
+        $normalizedEntries = $this->normalizeEntries($entries);
 
         if (empty($query)) {
-            return $entries;
+            return $normalizedEntries;
         }
 
-        return array_filter($entries, function ($entry) use ($query) {
-            $searchableContent = $this->getSearchableContent($this->normalizeEntry($entry));
+        $filtered = array_filter($normalizedEntries, function ($entry) use ($query) {
+            $searchableContent = $this->getSearchableContent($entry);
 
             return stripos($searchableContent, $query) !== false;
         });
+
+        // Re-index array to avoid gaps in keys
+        return array_values($filtered);
     }
 
     /**
