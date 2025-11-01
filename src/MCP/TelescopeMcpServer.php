@@ -38,11 +38,21 @@ final class TelescopeMcpServer
 
         // Register Telescope tools if available
         if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
-            $config = config('telescope-mcp', []);
-            $pagination = app(PaginationManager::class);
-            $formatter = app(ResponseFormatter::class);
+            try {
+                $config = config('telescope-mcp', []);
+                $pagination = app(PaginationManager::class);
+                $formatter = app(ResponseFormatter::class);
 
-            $this->registerTool(new RequestsTool($config, $pagination, $formatter));
+                $this->registerTool(new RequestsTool($config, $pagination, $formatter));
+            } catch (\Exception $e) {
+                // Log error but don't fail - Telescope might not be configured
+                if (config('telescope-mcp.logging.enabled', true)) {
+                    \Illuminate\Support\Facades\Log::channel(config('telescope-mcp.logging.channel', 'stack'))
+                        ->warning('Failed to register Telescope tools', [
+                            'error' => $e->getMessage(),
+                        ]);
+                }
+            }
         }
     }
 
