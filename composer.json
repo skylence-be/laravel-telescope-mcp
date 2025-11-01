@@ -1,0 +1,70 @@
+{
+    "name": "skylence/telescope-mcp",
+    "description": "A simple MCP (Model Context Protocol) server package for Laravel - Easy to extend with custom tools and JSON-RPC 2.0 compliant",
+    "type": "library",
+    "license": "MIT",
+    "keywords": [
+        "laravel",
+        "mcp",
+        "model-context-protocol",
+        "json-rpc",
+        "ai",
+        "claude",
+        "cursor",
+        "tools",
+        "api"
+    ],
+    "homepage": "https://github.com/skylence-be/telescope-mcp",
+    "authors": [
+        {
+            "name": "Jonas",
+            "email": "jonas@skylence.be",
+            "role": "Developer"
+        }
+    ],
+    "support": {
+        "issues": "https://github.com/skylence-be/telescope-mcp/issues",
+        "source": "https://github.com/skylence-be/telescope-mcp"
+    },
+    "require": {
+        "php": "^8.1|^8.2|^8.3|^8.4",
+        "laravel/framework": "^10.0|^11.0|^12.0"
+    },
+    "require-dev": {
+        "orchestra/testbench": "^8.0|^9.0",
+        "phpunit/phpunit": "^10.0|^11.0",
+        "phpstan/phpstan": "^1.0"
+    },
+    "autoload": {
+        "psr-4": {
+            "Skylence\\TelescopeMcp\\": "src/"
+        }
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "Skylence\\TelescopeMcp\\Tests\\": "tests/"
+        }
+    },
+    "extra": {
+        "laravel": {
+            "providers": [
+                "Skylence\\TelescopeMcp\\TelescopeMcpServiceProvider"
+            ],
+            "aliases": {
+                "TelescopeMcp": "Skylence\\TelescopeMcp\\Facades\\TelescopeMcp"
+            }
+        }
+    },
+    "scripts": {
+        "test": "vendor/bin/phpunit",
+        "test-coverage": "vendor/bin/phpunit --coverage-html coverage",
+        "analyse": "vendor/bin/phpstan analyse"
+    },
+    "config": {
+        "sort-packages": true,
+        "optimize-autoloader": true,
+        "preferred-install": "dist"
+    },
+    "minimum-stability": "dev",
+    "prefer-stable": true
+}
