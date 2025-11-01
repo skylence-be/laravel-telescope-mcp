@@ -30,7 +30,16 @@ abstract class TelescopeAbstractTool extends AbstractTool
         $this->config = $config;
         $this->pagination = $pagination;
         $this->formatter = $formatter;
-        $this->storage = App::make(EntriesRepository::class);
+
+        try {
+            $this->storage = App::make(EntriesRepository::class);
+        } catch (\Exception $e) {
+            throw new \RuntimeException(
+                'Laravel Telescope is not installed or configured. Please install it first: composer require laravel/telescope',
+                0,
+                $e
+            );
+        }
     }
 
     /**
@@ -81,11 +90,16 @@ abstract class TelescopeAbstractTool extends AbstractTool
             $this->getListFields()
         );
 
-        return $this->pagination->paginate(
+        $paginatedData = $this->pagination->paginate(
             $formatted,
             count($entries),
             $limit,
             $offset
+        );
+
+        return $this->formatResponse(
+            json_encode($paginatedData, JSON_PRETTY_PRINT),
+            $paginatedData
         );
     }
 
@@ -125,11 +139,16 @@ abstract class TelescopeAbstractTool extends AbstractTool
 
         $entries = $this->searchEntries($query, $arguments);
 
-        return $this->pagination->paginate(
+        $paginatedData = $this->pagination->paginate(
             $this->formatter->formatList($entries, $this->getListFields()),
             count($entries),
             $limit,
             0
+        );
+
+        return $this->formatResponse(
+            json_encode($paginatedData, JSON_PRETTY_PRINT),
+            $paginatedData
         );
     }
 
