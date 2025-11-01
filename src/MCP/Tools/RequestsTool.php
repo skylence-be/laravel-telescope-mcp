@@ -16,7 +16,7 @@ final class RequestsTool extends TelescopeAbstractTool
     public function getSchema(): array
     {
         return [
-            'name' => $this->getName(),
+            'name' => $this->getShortName(),
             'description' => 'Analyze HTTP requests handled by your application',
             'inputSchema' => [
                 'type' => 'object',
