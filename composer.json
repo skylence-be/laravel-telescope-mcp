@@ -1,5 +1,5 @@
 {
-    "name": "skylence/telescope-mcp",
+    "name": "skylence/laravel-telescope-mcp",
     "description": "A simple MCP (Model Context Protocol) server package for Laravel - Easy to extend with custom tools and JSON-RPC 2.0 compliant",
     "type": "library",
     "license": "MIT",
