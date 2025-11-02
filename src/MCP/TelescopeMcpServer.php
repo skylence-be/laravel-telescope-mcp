@@ -7,7 +7,6 @@ namespace Skylence\TelescopeMcp\MCP;
 use Skylence\TelescopeMcp\MCP\Tools\AbstractTool;
 use Skylence\TelescopeMcp\MCP\Tools\CacheTool;
 use Skylence\TelescopeMcp\MCP\Tools\CommandsTool;
-use Skylence\TelescopeMcp\MCP\Tools\EchoTool;
 use Skylence\TelescopeMcp\MCP\Tools\EventsTool;
 use Skylence\TelescopeMcp\MCP\Tools\ExceptionsTool;
 use Skylence\TelescopeMcp\MCP\Tools\GatesTool;
@@ -17,7 +16,6 @@ use Skylence\TelescopeMcp\MCP\Tools\MaintenanceTool;
 use Skylence\TelescopeMcp\MCP\Tools\ModelsTool;
 use Skylence\TelescopeMcp\MCP\Tools\NotificationsTool;
 use Skylence\TelescopeMcp\MCP\Tools\OverviewTool;
-use Skylence\TelescopeMcp\MCP\Tools\PingTool;
 use Skylence\TelescopeMcp\MCP\Tools\QueriesTool;
 use Skylence\TelescopeMcp\MCP\Tools\RedisTool;
 use Skylence\TelescopeMcp\MCP\Tools\RequestsTool;
@@ -50,9 +48,6 @@ final class TelescopeMcpServer
      */
     private function registerTools(): void
     {
-        $this->registerTool(new PingTool());
-        $this->registerTool(new EchoTool());
-
         // Register maintenance tool (doesn't require Telescope to be configured)
         if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
             $this->registerTool(new MaintenanceTool());
@@ -194,7 +189,7 @@ final class TelescopeMcpServer
         return [
             'test-server' => [
                 'name' => 'test-server',
-                'description' => 'Test the Simple MCP server with ping and echo',
+                'description' => 'Test the MCP server functionality',
                 'arguments' => [],
             ],
         ];
