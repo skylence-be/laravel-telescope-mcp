@@ -77,6 +77,9 @@ final class OverviewTool extends TelescopeAbstractTool
         $this->entryType = 'job';
         $jobs = $this->normalizeEntries($this->getEntries($arguments));
 
+        $this->entryType = 'cache';
+        $cache = $this->normalizeEntries($this->getEntries($arguments));
+
         // Restore original entry type
         $this->entryType = $originalEntryType;
 
@@ -90,7 +93,7 @@ final class OverviewTool extends TelescopeAbstractTool
             'health_status' => $this->calculateHealthStatus($requestAnalysis, $queryAnalysis, $exceptions),
             'performance_metrics' => $this->getPerformanceMetrics($requestAnalysis, $queryAnalysis),
             'critical_issues' => $this->identifyCriticalIssues($requestAnalysis, $queryAnalysis, $exceptions, $bottlenecks, $queries),
-            'system_stats' => $this->getSystemStats($requests, $queries, $exceptions, $jobs),
+            'system_stats' => $this->getSystemStats($requests, $queries, $exceptions, $jobs, $cache),
             'recent_errors' => $this->getRecentErrors($exceptions),
         ];
 
@@ -242,13 +245,16 @@ final class OverviewTool extends TelescopeAbstractTool
         array $requests,
         array $queries,
         array $exceptions,
-        array $jobs
+        array $jobs,
+        array $cache
     ): array {
         return [
             'requests_count' => count($requests),
             'queries_count' => count($queries),
             'exceptions_count' => count($exceptions),
             'jobs_processed' => count($jobs),
+            'cache_operations' => count($cache),
+            'cache_hit_rate' => $this->calculateCacheHitRate($cache),
             'failed_jobs' => count(array_filter($jobs, fn ($j) => ($j['content']['status'] ?? '') === 'failed')),
         ];
     }
@@ -374,6 +380,22 @@ final class OverviewTool extends TelescopeAbstractTool
         }
 
         return $groups;
+    }
+
+    protected function calculateCacheHitRate(array $cacheEntries): string
+    {
+        if (empty($cacheEntries)) {
+            return '0%';
+        }
+
+        $hits = count(array_filter($cacheEntries, fn ($c) => ($c['content']['type'] ?? '') === 'hit'));
+        $total = count($cacheEntries);
+
+        if ($total === 0) {
+            return '0%';
+        }
+
+        return round(($hits / $total) * 100, 1).'%';
     }
 
     protected function getListFields(): array
