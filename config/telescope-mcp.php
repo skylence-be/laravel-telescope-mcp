@@ -77,6 +77,27 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | High Memory Threshold
+    |--------------------------------------------------------------------------
+    |
+    | Requests using more memory than this threshold (in megabytes) will be
+    | considered high memory usage.
+    |
+    */
+    'high_memory_mb' => env('TELESCOPE_MCP_HIGH_MEMORY_MB', 50),
+
+    /*
+    |--------------------------------------------------------------------------
+    | N+1 Query Detection Threshold
+    |--------------------------------------------------------------------------
+    |
+    | The minimum number of similar queries to trigger N+1 detection.
+    |
+    */
+    'n_plus_one_threshold' => env('TELESCOPE_MCP_N_PLUS_ONE_THRESHOLD', 3),
+
+    /*
+    |--------------------------------------------------------------------------
     | Authentication & Authorization
     |--------------------------------------------------------------------------
     |
