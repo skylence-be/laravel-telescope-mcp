@@ -66,26 +66,6 @@ class PerformanceAnalyzer
     }
 
     /**
-     * Analyze queries for performance issues.
-     */
-    public function analyzeQueries(array $queries): array
-    {
-        $queries = $this->normalizeEntries($queries);
-        if (empty($queries)) {
-            return $this->emptyAnalysis();
-        }
-
-        return [
-            'summary' => $this->summarizeQueryPerformance($queries),
-            'slow_queries' => $this->identifySlowQueries($queries),
-            'duplicates' => $this->findDuplicateQueries($queries),
-            'n_plus_one' => $this->detectNPlusOneQueries($queries),
-            'by_connection' => $this->groupByConnection($queries),
-            'recommendations' => $this->generateQueryRecommendations($queries),
-        ];
-    }
-
-    /**
      * Identify bottlenecks in the system.
      */
     public function identifyBottlenecks(array $requests, array $queries): array
@@ -245,8 +225,9 @@ class PerformanceAnalyzer
     }
 
     /**
-     * Summarize performance metrics.
+     * Protected helper methods for request analysis
      */
+
     protected function summarizePerformance(array $requests): array
     {
         $durations = array_map(fn($r) => $r['content']['duration'] ?? 0, $requests);
@@ -262,9 +243,6 @@ class PerformanceAnalyzer
         ];
     }
 
-    /**
-     * Identify slow requests.
-     */
     protected function identifySlowRequests(array $requests): array
     {
         $threshold = $this->config['slow_request_ms'] ?? 1000;
@@ -284,9 +262,6 @@ class PerformanceAnalyzer
         }, array_slice($slowRequests, 0, 10));
     }
 
-    /**
-     * Analyze endpoints performance.
-     */
     protected function analyzeEndpoints(array $requests): array
     {
         $endpoints = [];
@@ -310,15 +285,12 @@ class PerformanceAnalyzer
         foreach ($endpoints as $endpoint => &$stats) {
             $stats['avg_duration'] = $stats['count'] > 0 ? $stats['total_duration'] / $stats['count'] : 0;
             $stats['p95'] = $this->percentile($stats['durations'], 95);
-            unset($stats['durations']); // Remove raw data to save tokens
+            unset($stats['durations']); // Remove raw data to save memory
         }
 
         return $endpoints;
     }
 
-    /**
-     * Analyze status codes distribution.
-     */
     protected function analyzeStatusCodes(array $requests): array
     {
         $statuses = [];
@@ -331,9 +303,6 @@ class PerformanceAnalyzer
         return $statuses;
     }
 
-    /**
-     * Calculate time distribution.
-     */
     protected function calculateTimeDistribution(array $requests): array
     {
         $buckets = [
@@ -357,9 +326,6 @@ class PerformanceAnalyzer
         return $buckets;
     }
 
-    /**
-     * Analyze memory usage.
-     */
     protected function analyzeMemoryUsage(array $requests): array
     {
         $memories = array_map(fn($r) => $r['content']['memory'] ?? 0, $requests);
@@ -372,9 +338,6 @@ class PerformanceAnalyzer
         ];
     }
 
-    /**
-     * Generate performance recommendations.
-     */
     protected function generateRecommendations(array $requests): array
     {
         $recommendations = [];
@@ -402,7 +365,7 @@ class PerformanceAnalyzer
     }
 
     /**
-     * Helper methods
+     * Utility methods
      */
 
     protected function calculateAverageDuration(array $data): float
@@ -447,104 +410,6 @@ class PerformanceAnalyzer
     protected function calculateTotalRequestTime(array $requests): float
     {
         return array_sum(array_map(fn($r) => $r['content']['duration'] ?? 0, $requests));
-    }
-
-    protected function summarizeQueryPerformance(array $queries): array
-    {
-        $times = array_map(fn($q) => $q['content']['time'] ?? 0, $queries);
-
-        return [
-            'total_queries' => count($queries),
-            'total_time' => array_sum($times),
-            'avg_time' => array_sum($times) / count($times),
-            'slow_queries' => count(array_filter($times, fn($t) => $t > $this->config['slow_query_ms'])),
-        ];
-    }
-
-    protected function identifySlowQueries(array $queries): array
-    {
-        $threshold = $this->config['slow_query_ms'] ?? 100;
-
-        $slowQueries = array_filter($queries, function ($query) use ($threshold) {
-            return ($query['content']['time'] ?? 0) > $threshold;
-        });
-
-        return array_slice($slowQueries, 0, 10);
-    }
-
-    protected function findDuplicateQueries(array $queries): array
-    {
-        $sqlCounts = [];
-
-        foreach ($queries as $query) {
-            $sql = $query['content']['sql'] ?? '';
-            $sqlCounts[$sql] = ($sqlCounts[$sql] ?? 0) + 1;
-        }
-
-        $duplicates = array_filter($sqlCounts, fn($count) => $count > 1);
-        arsort($duplicates);
-
-        return array_slice($duplicates, 0, 10, true);
-    }
-
-    protected function detectNPlusOneQueries(array $queries): array
-    {
-        $patterns = [];
-        $threshold = $this->config['n_plus_one_threshold'] ?? 3;
-
-        foreach ($queries as $query) {
-            $sql = preg_replace('/\d+/', 'N', $query['content']['sql'] ?? '');
-            $patterns[$sql] = ($patterns[$sql] ?? 0) + 1;
-        }
-
-        $nPlusOne = array_filter($patterns, fn($count) => $count >= $threshold);
-
-        return array_map(function ($sql, $count) {
-            return [
-                'pattern' => $sql,
-                'count' => $count,
-                'likely_n_plus_one' => true,
-            ];
-        }, array_keys($nPlusOne), $nPlusOne);
-    }
-
-    protected function groupByConnection(array $queries): array
-    {
-        $connections = [];
-
-        foreach ($queries as $query) {
-            $connection = $query['content']['connection'] ?? 'default';
-            $connections[$connection] = ($connections[$connection] ?? 0) + 1;
-        }
-
-        return $connections;
-    }
-
-    protected function generateQueryRecommendations(array $queries): array
-    {
-        $recommendations = [];
-        $duplicates = $this->findDuplicateQueries($queries);
-        $nPlusOne = $this->detectNPlusOneQueries($queries);
-
-        if (!empty($duplicates)) {
-            $recommendations[] = [
-                'type' => 'duplicate_queries',
-                'priority' => 'medium',
-                'message' => 'Duplicate queries detected',
-                'suggestion' => 'Consider using eager loading or caching for repeated queries',
-            ];
-        }
-
-        if (!empty($nPlusOne)) {
-            $recommendations[] = [
-                'type' => 'n_plus_one',
-                'priority' => 'high',
-                'message' => 'N+1 query patterns detected',
-                'suggestion' => 'Use eager loading with with() or load() methods',
-            ];
-        }
-
-        return $recommendations;
     }
 
     protected function emptyAnalysis(): array
