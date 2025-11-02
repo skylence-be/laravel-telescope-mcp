@@ -16,6 +16,7 @@ use Skylence\TelescopeMcp\MCP\Tools\LogsTool;
 use Skylence\TelescopeMcp\MCP\Tools\MaintenanceTool;
 use Skylence\TelescopeMcp\MCP\Tools\ModelsTool;
 use Skylence\TelescopeMcp\MCP\Tools\NotificationsTool;
+use Skylence\TelescopeMcp\MCP\Tools\OverviewTool;
 use Skylence\TelescopeMcp\MCP\Tools\PingTool;
 use Skylence\TelescopeMcp\MCP\Tools\QueriesTool;
 use Skylence\TelescopeMcp\MCP\Tools\RedisTool;
@@ -23,6 +24,8 @@ use Skylence\TelescopeMcp\MCP\Tools\RequestsTool;
 use Skylence\TelescopeMcp\MCP\Tools\ScheduleTool;
 use Skylence\TelescopeMcp\MCP\Tools\ViewsTool;
 use Skylence\TelescopeMcp\Services\PaginationManager;
+use Skylence\TelescopeMcp\Services\PerformanceAnalyzer;
+use Skylence\TelescopeMcp\Services\QueryAnalyzer;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
 
 final class TelescopeMcpServer
@@ -61,7 +64,10 @@ final class TelescopeMcpServer
                 $config = config('telescope-mcp', []);
                 $pagination = app(PaginationManager::class);
                 $formatter = app(ResponseFormatter::class);
+                $performanceAnalyzer = app(PerformanceAnalyzer::class);
+                $queryAnalyzer = app(QueryAnalyzer::class);
 
+                $this->registerTool(new OverviewTool($config, $pagination, $formatter, $performanceAnalyzer, $queryAnalyzer));
                 $this->registerTool(new RequestsTool($config, $pagination, $formatter));
                 $this->registerTool(new LogsTool($config, $pagination, $formatter));
                 $this->registerTool(new ExceptionsTool($config, $pagination, $formatter));

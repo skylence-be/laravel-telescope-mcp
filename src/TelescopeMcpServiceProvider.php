@@ -13,6 +13,8 @@ use Skylence\TelescopeMcp\Console\Commands\TelescopeStatsCommand;
 use Skylence\TelescopeMcp\Http\Middleware\AuthenticateMcp;
 use Skylence\TelescopeMcp\MCP\TelescopeMcpServer;
 use Skylence\TelescopeMcp\Services\PaginationManager;
+use Skylence\TelescopeMcp\Services\PerformanceAnalyzer;
+use Skylence\TelescopeMcp\Services\QueryAnalyzer;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
 use Skylence\TelescopeMcp\Support\Logger;
 
@@ -50,6 +52,16 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
             return new ResponseFormatter([
                 'summary_threshold' => 5,
             ]);
+        });
+
+        // Register PerformanceAnalyzer
+        $this->app->singleton(PerformanceAnalyzer::class, function ($app) {
+            return new PerformanceAnalyzer(config('telescope-mcp', []));
+        });
+
+        // Register QueryAnalyzer
+        $this->app->singleton(QueryAnalyzer::class, function ($app) {
+            return new QueryAnalyzer(config('telescope-mcp', []));
         });
 
         // Register TelescopeMcpServer
