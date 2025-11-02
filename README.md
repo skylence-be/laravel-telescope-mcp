@@ -4,8 +4,8 @@ A super simple MCP (Model Context Protocol) server package for Laravel, based on
 
 ## Features
 
-- 🚀 Simple and lightweight MCP server
-- 🛠️ Two example tools: Ping and Echo
+- 🚀 Laravel Telescope MCP server
+- 📊 Monitor and analyze your Laravel application through MCP
 - 📦 Easy to extend with custom tools
 - 🔧 Follows JSON-RPC 2.0 specification
 - 📝 Built-in logging support
@@ -75,138 +75,13 @@ POST /telescope-mcp/tools/{tool}   - Direct tool execution
 
 ### Testing the Server
 
-#### 1. Get the Manifest
+#### Get the Manifest
 
 ```bash
 curl http://localhost:8000/telescope-mcp/manifest.json
 ```
 
-Response:
-```json
-{
-    "jsonrpc": "2.0",
-    "result": {
-        "protocolVersion": "2024-11-05",
-        "serverInfo": {
-            "name": "telescope-mcp",
-            "version": "1.0.0",
-            "description": "A simple MCP server for Laravel"
-        },
-        "capabilities": {
-            "tools": [
-                {
-                    "name": "mcp__telescope-mcp__ping",
-                    "description": "Simple ping tool to check if the MCP server is responding",
-                    "parameters": {...}
-                },
-                {
-                    "name": "mcp__telescope-mcp__echo",
-                    "description": "Echo back any message you send",
-                    "parameters": {...}
-                }
-            ]
-        }
-    },
-    "id": null
-}
-```
-
-#### 2. Ping Tool (via direct endpoint)
-
-```bash
-curl -X POST http://localhost:8000/telescope-mcp/tools/ping
-```
-
-Response:
-```json
-{
-    "content": [
-        {
-            "type": "text",
-            "text": "Pong! MCP server is up and running."
-        }
-    ],
-    "data": {
-        "status": "ok",
-        "timestamp": "2025-10-30T12:34:56+00:00",
-        "server": "telescope-mcp"
-    }
-}
-```
-
-#### 3. Echo Tool (via direct endpoint)
-
-```bash
-curl -X POST http://localhost:8000/telescope-mcp/tools/echo \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello, MCP!"}'
-```
-
-Response:
-```json
-{
-    "content": [
-        {
-            "type": "text",
-            "text": "Echo: Hello, MCP!"
-        }
-    ],
-    "data": {
-        "original": "Hello, MCP!",
-        "length": 11,
-        "timestamp": "2025-10-30T12:34:56+00:00"
-    }
-}
-```
-
-#### 4. Using JSON-RPC 2.0 Format
-
-```bash
-curl -X POST http://localhost:8000/telescope-mcp \
-  -H "Content-Type: application/json" \
-  -d '{
-    "jsonrpc": "2.0",
-    "method": "tools/call",
-    "params": {
-        "name": "echo",
-        "arguments": {
-            "message": "Testing JSON-RPC"
-        }
-    },
-    "id": 1
-}'
-```
-
-## Available Tools
-
-### 1. Ping Tool
-
-Simple health check tool.
-
-**Name:** `mcp__telescope-mcp__ping`
-
-**Parameters:** None
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/telescope-mcp/tools/ping
-```
-
-### 2. Echo Tool
-
-Echoes back any message you send.
-
-**Name:** `mcp__telescope-mcp__echo`
-
-**Parameters:**
-- `message` (string, required): The message to echo back
-
-**Example:**
-```bash
-curl -X POST http://localhost:8000/telescope-mcp/tools/echo \
-  -H "Content-Type: application/json" \
-  -d '{"message": "Hello World"}'
-```
+This will return the server manifest with all available tools, resources, and prompts in MCP protocol format.
 
 ## Creating Custom Tools
 
@@ -271,9 +146,12 @@ In `src/MCP/TelescopeMcpServer.php`, add your tool to the `registerTools()` meth
 ```php
 private function registerTools(): void
 {
-    $this->registerTool(new PingTool());
-    $this->registerTool(new EchoTool());
     $this->registerTool(new YourTool()); // Add this line
+
+    // Or register conditionally if it depends on Telescope
+    if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
+        $this->registerTool(new YourTool());
+    }
 }
 ```
 
@@ -301,8 +179,7 @@ telescope-mcp/
 │   │   ├── TelescopeMcpServer.php      # Core server
 │   │   └── Tools/
 │   │       ├── AbstractTool.php     # Base tool class
-│   │       ├── PingTool.php         # Ping tool
-│   │       └── EchoTool.php         # Echo tool
+│   │       └── [Various Telescope tools]
 │   ├── Support/
 │   │   ├── JsonRpcResponse.php      # JSON-RPC helpers
 │   │   └── Logger.php               # Logging helper
