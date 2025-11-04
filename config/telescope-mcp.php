@@ -111,4 +111,81 @@ return [
         'enabled' => env('TELESCOPE_MCP_AUTH_ENABLED', true),
         'token' => env('TELESCOPE_MCP_API_TOKEN'),
     ],
+
+    /*
+    |--------------------------------------------------------------------------
+    | Overview Tool Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configure how the overview tool analyzes and categorizes routes.
+    | Route groups are matched in order - first match wins.
+    |
+    */
+    'overview' => [
+        /*
+        | Route Groups
+        |
+        | Define groups of routes for separate analysis. Routes are categorized
+        | by middleware (ANY match) and/or URI prefix. First matching group wins.
+        */
+        'route_groups' => [
+            'api' => [
+                'middleware' => ['api'],
+                'uri_prefix' => null, // Optional additional filter
+            ],
+            'web' => [
+                'middleware' => ['web'],
+                'uri_prefix' => null,
+            ],
+        ],
+
+        /*
+        | Global Exclusions
+        |
+        | Routes matching these patterns will be excluded from all analyses.
+        | Supports wildcards (*) for pattern matching.
+        */
+        'exclude' => [
+            'uris' => [
+                'telescope-mcp/*',
+                'telescope/*',
+                'horizon/*',
+                'pulse/*',
+                '_debugbar/*',
+                'livewire/*',
+            ],
+            'middleware' => [
+                // Exclude routes with specific middleware
+            ],
+            'controller_actions' => [
+                // e.g., 'Closure' to exclude closure-based routes
+            ],
+        ],
+
+        /*
+        | Context-Aware Thresholds
+        |
+        | Different performance expectations for different route types.
+        | These override the global thresholds when analyzing specific route groups.
+        */
+        'thresholds' => [
+            'api' => [
+                'slow_request_ms' => 500,      // APIs should respond quickly
+                'acceptable_error_rate' => 0.01, // 1% error rate
+            ],
+            'web' => [
+                'slow_request_ms' => 1500,     // Web pages can be slower
+                'acceptable_error_rate' => 0.05, // 5% error rate
+            ],
+        ],
+
+        /*
+        | Matching Strategy
+        |
+        | How to match middleware:
+        | - 'any': Request matches if it has ANY of the group's middleware
+        | - 'all': Request matches only if it has ALL of the group's middleware
+        */
+        'matching_strategy' => 'any',
+    ],
 ];
