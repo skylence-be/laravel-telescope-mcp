@@ -25,6 +25,7 @@ use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\PerformanceAnalyzer;
 use Skylence\TelescopeMcp\Services\QueryAnalyzer;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
+use Skylence\TelescopeMcp\Services\RouteFilter;
 
 final class TelescopeMcpServer
 {
@@ -61,9 +62,10 @@ final class TelescopeMcpServer
                 $formatter = app(ResponseFormatter::class);
                 $performanceAnalyzer = app(PerformanceAnalyzer::class);
                 $queryAnalyzer = app(QueryAnalyzer::class);
+                $routeFilter = app(RouteFilter::class);
 
-                $this->registerTool(new OverviewTool($config, $pagination, $formatter, $performanceAnalyzer, $queryAnalyzer));
-                $this->registerTool(new RequestsTool($config, $pagination, $formatter));
+                $this->registerTool(new OverviewTool($config, $pagination, $formatter, $performanceAnalyzer, $queryAnalyzer, $routeFilter));
+                $this->registerTool(new RequestsTool($config, $pagination, $formatter, $routeFilter));
                 $this->registerTool(new LogsTool($config, $pagination, $formatter));
                 $this->registerTool(new ExceptionsTool($config, $pagination, $formatter));
                 $this->registerTool(new QueriesTool($config, $pagination, $formatter));

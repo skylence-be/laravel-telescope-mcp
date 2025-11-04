@@ -4,9 +4,24 @@ declare(strict_types=1);
 
 namespace Skylence\TelescopeMcp\MCP\Tools;
 
+use Skylence\TelescopeMcp\Services\PaginationManager;
+use Skylence\TelescopeMcp\Services\ResponseFormatter;
+use Skylence\TelescopeMcp\Services\RouteFilter;
+
 final class RequestsTool extends TelescopeAbstractTool
 {
     protected string $entryType = 'request';
+    protected RouteFilter $routeFilter;
+
+    public function __construct(
+        array $config,
+        PaginationManager $pagination,
+        ResponseFormatter $formatter,
+        RouteFilter $routeFilter
+    ) {
+        parent::__construct($config, $pagination, $formatter);
+        $this->routeFilter = $routeFilter;
+    }
 
     public function getShortName(): string
     {
@@ -17,7 +32,7 @@ final class RequestsTool extends TelescopeAbstractTool
     {
         return [
             'name' => $this->getShortName(),
-            'description' => 'Analyze HTTP requests handled by your application',
+            'description' => 'Analyze HTTP requests handled by your application. Can filter by route type (web/api).',
             'inputSchema' => [
                 'type' => 'object',
                 'properties' => [
@@ -32,6 +47,11 @@ final class RequestsTool extends TelescopeAbstractTool
                         'enum' => ['5m', '15m', '1h', '6h', '24h', '7d', '14d', '21d', '30d', '3M', '6M', '12M'],
                         'description' => 'Time period for analysis',
                         'default' => '1h',
+                    ],
+                    'route_type' => [
+                        'type' => 'string',
+                        'description' => 'Filter by route type (all, api, web, other). Defaults to "all".',
+                        'default' => 'all',
                     ],
                     'limit' => [
                         'type' => 'integer',
@@ -77,6 +97,31 @@ final class RequestsTool extends TelescopeAbstractTool
             'slow' => $this->getSlowRequests($arguments),
             default => parent::execute($arguments),
         };
+    }
+
+    /**
+     * Override to apply route filtering.
+     */
+    protected function getEntries(array $arguments = []): array
+    {
+        $entries = parent::getEntries($arguments);
+
+        // Apply route type filtering if specified
+        $routeType = $arguments['route_type'] ?? 'all';
+        if ($routeType !== 'all') {
+            $normalizedEntries = $this->normalizeEntries($entries);
+            $filteredEntries = $this->routeFilter->filterRequests($normalizedEntries, $routeType);
+
+            // Convert back to entry objects (extract from normalized structure)
+            // We need to map back to original entries based on ID
+            $filteredIds = array_column($filteredEntries, 'id');
+            $entries = array_filter($entries, function ($entry) use ($filteredIds) {
+                return in_array($entry->uuid ?? null, $filteredIds, true);
+            });
+            $entries = array_values($entries);
+        }
+
+        return $entries;
     }
 
     /**
@@ -154,10 +199,12 @@ final class RequestsTool extends TelescopeAbstractTool
     {
         try {
             $entries = $this->normalizeEntries($this->getEntries($arguments));
+            $routeType = $arguments['route_type'] ?? 'all';
 
             if (empty($entries)) {
                 return $this->formatter->formatStats([
                     'total_requests' => 0,
+                    'route_type' => $routeType,
                     'message' => 'No requests found for the specified period',
                 ]);
             }
@@ -196,6 +243,7 @@ final class RequestsTool extends TelescopeAbstractTool
 
             return $this->formatter->formatStats([
                 'total_requests' => $totalRequests,
+                'route_type' => $routeType,
                 'duration' => [
                     'avg' => count($durations) > 0 ? array_sum($durations) / count($durations) : 0,
                     'min' => count($durations) > 0 ? min($durations) : 0,
