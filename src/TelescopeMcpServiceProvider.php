@@ -16,6 +16,7 @@ use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\PerformanceAnalyzer;
 use Skylence\TelescopeMcp\Services\QueryAnalyzer;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
+use Skylence\TelescopeMcp\Services\RouteFilter;
 use Skylence\TelescopeMcp\Support\Logger;
 
 final class TelescopeMcpServiceProvider extends ServiceProvider
@@ -62,6 +63,11 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
         // Register QueryAnalyzer
         $this->app->singleton(QueryAnalyzer::class, function ($app) {
             return new QueryAnalyzer(config('telescope-mcp', []));
+        });
+
+        // Register RouteFilter
+        $this->app->singleton(RouteFilter::class, function ($app) {
+            return new RouteFilter();
         });
 
         // Register TelescopeMcpServer

@@ -8,22 +8,26 @@ use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\PerformanceAnalyzer;
 use Skylence\TelescopeMcp\Services\QueryAnalyzer;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
+use Skylence\TelescopeMcp\Services\RouteFilter;
 
 final class OverviewTool extends TelescopeAbstractTool
 {
     protected PerformanceAnalyzer $performanceAnalyzer;
     protected QueryAnalyzer $queryAnalyzer;
+    protected RouteFilter $routeFilter;
 
     public function __construct(
         array $config,
         PaginationManager $pagination,
         ResponseFormatter $formatter,
         PerformanceAnalyzer $performanceAnalyzer,
-        QueryAnalyzer $queryAnalyzer
+        QueryAnalyzer $queryAnalyzer,
+        RouteFilter $routeFilter
     ) {
         parent::__construct($config, $pagination, $formatter);
         $this->performanceAnalyzer = $performanceAnalyzer;
         $this->queryAnalyzer = $queryAnalyzer;
+        $this->routeFilter = $routeFilter;
     }
 
     public function getShortName(): string
@@ -35,7 +39,7 @@ final class OverviewTool extends TelescopeAbstractTool
     {
         return [
             'name' => $this->getShortName(),
-            'description' => 'Get a comprehensive system overview with health status, performance metrics, and critical issues in under 2K tokens',
+            'description' => 'Get a comprehensive system overview with health status, performance metrics, and critical issues. Can filter by route type (web/api) for targeted analysis.',
             'inputSchema' => [
                 'type' => 'object',
                 'properties' => [
@@ -45,10 +49,20 @@ final class OverviewTool extends TelescopeAbstractTool
                         'description' => 'Time period for analysis',
                         'default' => '1h',
                     ],
+                    'route_type' => [
+                        'type' => 'string',
+                        'description' => 'Filter by route type (all, api, web, other). Defaults to "all".',
+                        'default' => 'all',
+                    ],
                     'include_recommendations' => [
                         'type' => 'boolean',
                         'description' => 'Include optimization recommendations',
                         'default' => true,
+                    ],
+                    'include_breakdown' => [
+                        'type' => 'boolean',
+                        'description' => 'Include breakdown by route group (always included when route_type=all)',
+                        'default' => false,
                     ],
                 ],
                 'required' => [],
@@ -59,14 +73,19 @@ final class OverviewTool extends TelescopeAbstractTool
     public function execute(array $arguments = []): array
     {
         $period = $arguments['period'] ?? '1h';
+        $routeType = $arguments['route_type'] ?? 'all';
         $includeRecommendations = $arguments['include_recommendations'] ?? true;
+        $includeBreakdown = $arguments['include_breakdown'] ?? false;
 
         // Store original entry type and restore it after gathering data
         $originalEntryType = $this->entryType;
 
         // Gather data from different entry types using getEntries to apply period filtering
         $this->entryType = 'request';
-        $requests = $this->normalizeEntries($this->getEntries($arguments));
+        $allRequests = $this->normalizeEntries($this->getEntries($arguments));
+
+        // Filter requests by route type
+        $requests = $this->routeFilter->filterRequests($allRequests, $routeType === 'all' ? null : $routeType);
 
         $this->entryType = 'query';
         $queries = $this->normalizeEntries($this->getEntries($arguments));
@@ -90,12 +109,17 @@ final class OverviewTool extends TelescopeAbstractTool
 
         // Build overview
         $overview = [
-            'health_status' => $this->calculateHealthStatus($requestAnalysis, $queryAnalysis, $exceptions),
+            'health_status' => $this->calculateHealthStatus($requestAnalysis, $queryAnalysis, $exceptions, $routeType),
             'performance_metrics' => $this->getPerformanceMetrics($requestAnalysis, $queryAnalysis),
             'critical_issues' => $this->identifyCriticalIssues($requestAnalysis, $queryAnalysis, $exceptions, $bottlenecks, $queries),
             'system_stats' => $this->getSystemStats($requests, $queries, $exceptions, $jobs, $cache),
             'recent_errors' => $this->getRecentErrors($exceptions),
         ];
+
+        // Include route breakdown when viewing all routes or explicitly requested
+        if ($routeType === 'all' || $includeBreakdown) {
+            $overview['route_breakdown'] = $this->routeFilter->getRouteBreakdown($allRequests);
+        }
 
         if ($includeRecommendations) {
             $overview['recommendations'] = $this->generateRecommendations(
@@ -112,25 +136,32 @@ final class OverviewTool extends TelescopeAbstractTool
     /**
      * Calculate overall health status.
      */
-    protected function calculateHealthStatus(array $requestAnalysis, array $queryAnalysis, array $exceptions): array
+    protected function calculateHealthStatus(array $requestAnalysis, array $queryAnalysis, array $exceptions, string $routeType): array
     {
         $score = 100;
         $issues = [];
 
-        // Check request performance
-        if (($requestAnalysis['summary']['avg_duration'] ?? 0) > 1000) {
+        // Get context-aware thresholds for the route type
+        $thresholds = $this->routeFilter->getThresholds($routeType === 'all' ? 'web' : $routeType);
+        $slowRequestThreshold = $thresholds['slow_request_ms'];
+        $acceptableErrorRate = $thresholds['acceptable_error_rate'] * 100; // Convert to percentage
+
+        $avgDuration = $requestAnalysis['summary']['avg_duration'] ?? 0;
+
+        // Check request performance (context-aware)
+        if ($avgDuration > $slowRequestThreshold) {
             $score -= 20;
-            $issues[] = 'High average response time';
+            $issues[] = "High average response time ({$avgDuration}ms > {$slowRequestThreshold}ms)";
         }
 
-        // Check error rate
+        // Check error rate (context-aware)
         $errorRate = $this->calculateErrorRate($requestAnalysis);
-        if ($errorRate > 5) {
+        if ($errorRate > ($acceptableErrorRate * 5)) { // 5x the acceptable rate
             $score -= 30;
             $issues[] = 'High error rate ('.round($errorRate, 1).'%)';
-        } elseif ($errorRate > 1) {
+        } elseif ($errorRate > $acceptableErrorRate) {
             $score -= 10;
-            $issues[] = 'Elevated error rate';
+            $issues[] = 'Elevated error rate ('.round($errorRate, 1).'%)';
         }
 
         // Check database performance
@@ -148,6 +179,7 @@ final class OverviewTool extends TelescopeAbstractTool
         return [
             'score' => max(0, $score),
             'status' => $this->getStatusLabel($score),
+            'route_type' => $routeType,
             'issues' => $issues,
         ];
     }
