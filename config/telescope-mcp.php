@@ -5,10 +5,11 @@ declare(strict_types=1);
 return [
     /*
     |--------------------------------------------------------------------------
-    | MCP Server Path
+    | MCP Server Path (Legacy - use http.path instead)
     |--------------------------------------------------------------------------
     |
-    | The URI path where the MCP server will be accessible.
+    | The URI path where the HTTP MCP server will be accessible.
+    | This is kept for backward compatibility.
     |
     */
     'path' => env('TELESCOPE_MCP_PATH', 'telescope-mcp'),
@@ -18,20 +19,36 @@ return [
     | Enable/Disable MCP Server
     |--------------------------------------------------------------------------
     |
-    | Control whether the MCP server is enabled.
+    | Control whether the MCP server is enabled (both stdio and HTTP).
     |
     */
     'enabled' => env('TELESCOPE_MCP_ENABLED', true),
 
     /*
     |--------------------------------------------------------------------------
-    | Middleware
+    | Middleware (Legacy - use http.middleware instead)
     |--------------------------------------------------------------------------
     |
-    | Middleware to apply to MCP routes.
+    | Middleware to apply to HTTP MCP routes.
+    | This is kept for backward compatibility.
     |
     */
     'middleware' => ['api'],
+
+    /*
+    |--------------------------------------------------------------------------
+    | HTTP MCP Configuration
+    |--------------------------------------------------------------------------
+    |
+    | Configuration for HTTP-based MCP access (JSON-RPC 2.0).
+    | This allows remote access to Telescope tools via HTTP endpoints.
+    |
+    */
+    'http' => [
+        'enabled' => env('TELESCOPE_MCP_HTTP_ENABLED', true),
+        'path' => env('TELESCOPE_MCP_HTTP_PATH', env('TELESCOPE_MCP_PATH', 'telescope-mcp')),
+        'middleware' => ['api'],
+    ],
 
     /*
     |--------------------------------------------------------------------------

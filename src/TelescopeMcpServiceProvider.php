@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeClearCommand;
+use Skylence\TelescopeMcp\Console\Commands\TelescopeMcpCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopePruneCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeStatsCommand;
 use Skylence\TelescopeMcp\Http\Middleware\AuthenticateMcp;
@@ -96,12 +97,16 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
         // Register middleware
         $this->app['router']->aliasMiddleware('telescope-mcp.auth', AuthenticateMcp::class);
 
-        // Register routes
-        $this->registerRoutes();
+        // Register stdio MCP routes (Laravel MCP)
+        $this->loadRoutesFrom(__DIR__.'/../routes/ai.php');
+
+        // Register HTTP MCP routes
+        $this->registerHttpRoutes();
 
         // Register artisan commands
         if ($this->app->runningInConsole()) {
             $this->commands([
+                TelescopeMcpCommand::class,
                 TelescopePruneCommand::class,
                 TelescopeStatsCommand::class,
                 TelescopeClearCommand::class,
@@ -138,11 +143,16 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
     }
 
     /**
-     * Register the package routes.
+     * Register the HTTP MCP routes.
      */
-    protected function registerRoutes(): void
+    protected function registerHttpRoutes(): void
     {
-        $middleware = config('telescope-mcp.middleware', ['api']);
+        // Skip HTTP routes if disabled
+        if (! config('telescope-mcp.http.enabled', true)) {
+            return;
+        }
+
+        $middleware = config('telescope-mcp.http.middleware', config('telescope-mcp.middleware', ['api']));
 
         // Add auth middleware if enabled
         if (config('telescope-mcp.auth.enabled', true)) {
@@ -150,10 +160,10 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
         }
 
         Route::group([
-            'prefix' => config('telescope-mcp.path', 'telescope-mcp'),
+            'prefix' => config('telescope-mcp.http.path', config('telescope-mcp.path', 'telescope-mcp')),
             'middleware' => $middleware,
         ], function () {
-            $this->loadRoutesFrom(__DIR__.'/../routes/api.php');
+            $this->loadRoutesFrom(__DIR__.'/../routes/http.php');
         });
     }
 }
