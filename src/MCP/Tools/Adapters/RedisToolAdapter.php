@@ -5,7 +5,7 @@ declare(strict_types=1);
 namespace Skylence\TelescopeMcp\MCP\Tools\Adapters;
 
 use Skylence\TelescopeMcp\MCP\Tools\AbstractTool;
-use Skylence\TelescopeMcp\MCP\Tools${tool}Tool;
+use Skylence\TelescopeMcp\MCP\Tools\RedisTool;
 use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\ResponseFormatter;
 

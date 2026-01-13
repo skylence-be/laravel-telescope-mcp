@@ -4,7 +4,7 @@ declare(strict_types=1);
 
 namespace Skylence\TelescopeMcp\MCP\Tools\Adapters;
 
-use Illuminate\JsonSchema\JsonSchema;
+use Illuminate\Contracts\JsonSchema\JsonSchema;
 use Laravel\Mcp\Request;
 use Laravel\Mcp\Response;
 use Laravel\Mcp\Server\Tool;
@@ -27,7 +27,7 @@ abstract class AbstractToolAdapter extends Tool
     /**
      * The tool's name (derived from wrapped tool).
      */
-    protected function name(): string
+    public function name(): string
     {
         return $this->getTool()->getShortName();
     }
