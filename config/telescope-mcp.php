@@ -151,7 +151,7 @@ return [
                 'uri_prefix' => null, // Optional additional filter
             ],
             'web' => [
-                'middleware' => ['web'],
+                'middleware' => ['web', 'panel:*'], // Includes Filament panels
                 'uri_prefix' => null,
             ],
         ],

@@ -116,7 +116,7 @@ final class RequestsTool extends TelescopeAbstractTool
             // We need to map back to original entries based on ID
             $filteredIds = array_column($filteredEntries, 'id');
             $entries = array_filter($entries, function ($entry) use ($filteredIds) {
-                return in_array($entry->uuid ?? null, $filteredIds, true);
+                return in_array($entry->id ?? null, $filteredIds, true);
             });
             $entries = array_values($entries);
         }

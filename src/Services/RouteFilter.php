@@ -187,12 +187,22 @@ class RouteFilter
         $groupMiddleware = $groupConfig['middleware'] ?? [];
 
         if (!empty($groupMiddleware)) {
+            $matchedCount = 0;
+            foreach ($groupMiddleware as $pattern) {
+                foreach ($middleware as $m) {
+                    if ($this->matchesPattern($m, $pattern)) {
+                        $matchedCount++;
+                        break;
+                    }
+                }
+            }
+
             if ($this->matchingStrategy === 'all') {
-                // ALL middleware must be present
-                $middlewareMatch = count(array_intersect($groupMiddleware, $middleware)) === count($groupMiddleware);
+                // ALL middleware patterns must match
+                $middlewareMatch = $matchedCount === count($groupMiddleware);
             } else {
-                // ANY middleware must be present (default)
-                $middlewareMatch = count(array_intersect($groupMiddleware, $middleware)) > 0;
+                // ANY middleware pattern must match (default)
+                $middlewareMatch = $matchedCount > 0;
             }
         } else {
             // No middleware specified means middleware check passes

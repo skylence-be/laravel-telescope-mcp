@@ -1,256 +1,184 @@
-# Simple MCP
+# Laravel Telescope MCP
 
-A super simple MCP (Model Context Protocol) server package for Laravel, based on the Laravel Telescope MCP architecture.
+A powerful MCP (Model Context Protocol) server for Laravel Telescope, providing real-time monitoring, performance analysis, and debugging through Claude Code and other MCP clients.
 
 ## Features
 
-- 🚀 Laravel Telescope MCP server
-- 📊 Monitor and analyze your Laravel application through MCP
-- 📦 Easy to extend with custom tools
-- 🔧 Follows JSON-RPC 2.0 specification
-- 📝 Built-in logging support
-- ⚙️ Configurable via config file
+- **STDIO & HTTP Support** - Use with Claude Code (stdio) or any HTTP client
+- **Route Type Filtering** - Separate analysis for API vs Web routes (including Filament panels)
+- **Performance Monitoring** - Request times, query analysis, N+1 detection
+- **Health Scoring** - Context-aware health scores with different thresholds per route type
+- **Exception Tracking** - Monitor and analyze application errors
+- **Queue Monitoring** - Track job execution and failures
+- **Cache Analysis** - Hit rates and operation tracking
 
 ## Installation
 
-### 1. Install via Composer
-
-If you're developing this package locally, add it to your Laravel project's `composer.json`:
-
-```json
-{
-    "repositories": [
-        {
-            "type": "path",
-            "url": "../laravel-packages/telescope-mcp"
-        }
-    ]
-}
-```
-
-Then require it:
-
 ```bash
-composer require skylence/telescope-mcp
+composer require skylence/laravel-telescope-mcp
 ```
 
-### 2. Publish Configuration (Optional)
+Publish configuration (optional):
 
 ```bash
 php artisan vendor:publish --tag=telescope-mcp-config
 ```
 
-This will create `config/telescope-mcp.php` where you can customize:
-- Server path (default: `telescope-mcp`)
-- Enable/disable the server
-- Middleware configuration
-- Logging settings
-
 ## Configuration
+
+### Claude Code (STDIO Mode)
+
+Add to your `.mcp.json`:
+
+```json
+{
+  "mcpServers": {
+    "telescope": {
+      "type": "stdio",
+      "command": "php",
+      "args": ["artisan", "mcp:start", "telescope"]
+    }
+  }
+}
+```
 
 ### Environment Variables
 
-Add these to your `.env` file:
-
 ```env
-SIMPLE_MCP_PATH=telescope-mcp
-SIMPLE_MCP_ENABLED=true
-SIMPLE_MCP_LOGGING_ENABLED=true
-SIMPLE_MCP_LOGGING_CHANNEL=stack
+TELESCOPE_MCP_ENABLED=true
+TELESCOPE_MCP_AUTH_ENABLED=false
+TELESCOPE_MCP_SLOW_REQUEST_MS=1000
+TELESCOPE_MCP_SLOW_QUERY_MS=100
 ```
 
-## Usage
+## Route Type Filtering
 
-### Available Endpoints
-
-Once installed, the MCP server is available at `/telescope-mcp` (or your configured path):
-
-```
-POST /telescope-mcp                - JSON-RPC 2.0 endpoint (supports all methods)
-GET  /telescope-mcp/manifest.json  - Get server manifest (MCP protocol format)
-POST /telescope-mcp/manifest.json  - JSON-RPC 2.0 endpoint (same as POST /)
-POST /telescope-mcp/tools/call     - Call a tool via JSON-RPC
-POST /telescope-mcp/tools/{tool}   - Direct tool execution
-```
-
-### Testing the Server
-
-#### Get the Manifest
-
-```bash
-curl http://localhost:8000/telescope-mcp/manifest.json
-```
-
-This will return the server manifest with all available tools, resources, and prompts in MCP protocol format.
-
-## Creating Custom Tools
-
-### 1. Create a New Tool Class
-
-Create a new file in `src/MCP/Tools/YourTool.php`:
+Routes are automatically categorized by middleware for separate analysis:
 
 ```php
-<?php
-
-declare(strict_types=1);
-
-namespace Skylence\TelescopeMcp\MCP\Tools;
-
-final class YourTool extends AbstractTool
-{
-    public function getShortName(): string
-    {
-        return 'your-tool';
-    }
-
-    public function getSchema(): array
-    {
-        return [
-            'name' => $this->getName(),
-            'description' => 'Your tool description',
-            'parameters' => [
-                'type' => 'object',
-                'properties' => [
-                    'param1' => [
-                        'type' => 'string',
-                        'description' => 'Parameter description',
-                    ],
-                ],
-                'required' => ['param1'],
-            ],
-        ];
-    }
-
-    public function execute(array $params): array
-    {
-        // Validate parameters
-        if (!isset($params['param1'])) {
-            return $this->formatError('param1 is required');
-        }
-
-        // Your logic here
-        $result = "Processing: {$params['param1']}";
-
-        return $this->formatResponse($result, [
-            'processed' => true,
-            'timestamp' => now()->toIso8601String(),
-        ]);
-    }
-}
+// config/telescope-mcp.php
+'overview' => [
+    'route_groups' => [
+        'api' => [
+            'middleware' => ['api'],
+        ],
+        'web' => [
+            'middleware' => ['web', 'panel:*'], // Includes Filament panels
+        ],
+    ],
+    'thresholds' => [
+        'api' => [
+            'slow_request_ms' => 500,      // APIs should be fast
+            'acceptable_error_rate' => 0.01,
+        ],
+        'web' => [
+            'slow_request_ms' => 1500,     // Web pages can be slower
+            'acceptable_error_rate' => 0.05,
+        ],
+    ],
+],
 ```
 
-### 2. Register Your Tool
+The `panel:*` wildcard matches Filament panel middleware (e.g., `panel:app`, `panel:admin`).
 
-In `src/MCP/TelescopeMcpServer.php`, add your tool to the `registerTools()` method:
+## Available Tools
 
-```php
-private function registerTools(): void
-{
-    $this->registerTool(new YourTool()); // Add this line
-
-    // Or register conditionally if it depends on Telescope
-    if (class_exists(\Laravel\Telescope\TelescopeServiceProvider::class)) {
-        $this->registerTool(new YourTool());
-    }
-}
-```
-
-### 3. Test Your Tool
-
-```bash
-curl -X POST http://localhost:8000/telescope-mcp/tools/your-tool \
-  -H "Content-Type: application/json" \
-  -d '{"param1": "test value"}'
-```
-
-## Architecture
+### telescope_overview
+System health overview with performance metrics and route breakdown.
 
 ```
-telescope-mcp/
-├── config/
-│   └── telescope-mcp.php              # Configuration file
-├── routes/
-│   └── api.php                      # Route definitions
-├── src/
-│   ├── Http/
-│   │   └── Controllers/
-│   │       └── McpController.php    # HTTP handler
-│   ├── MCP/
-│   │   ├── TelescopeMcpServer.php      # Core server
-│   │   └── Tools/
-│   │       ├── AbstractTool.php     # Base tool class
-│   │       └── [Various Telescope tools]
-│   ├── Support/
-│   │   ├── JsonRpcResponse.php      # JSON-RPC helpers
-│   │   └── Logger.php               # Logging helper
-│   └── TelescopeMcpServiceProvider.php # Service provider
-└── composer.json
+telescope_overview(period="1h", route_type="all", include_breakdown=true)
 ```
 
-## JSON-RPC 2.0 Compliance
+### requests
+HTTP request analysis with filtering by route type.
 
-This package follows the JSON-RPC 2.0 specification:
-
-- **Request Format:**
-  ```json
-  {
-      "jsonrpc": "2.0",
-      "method": "tools/call",
-      "params": {...},
-      "id": 1
-  }
-  ```
-
-- **Success Response:**
-  ```json
-  {
-      "jsonrpc": "2.0",
-      "result": {...},
-      "id": 1
-  }
-  ```
-
-- **Error Response:**
-  ```json
-  {
-      "jsonrpc": "2.0",
-      "error": {
-          "code": -32600,
-          "message": "Invalid Request"
-      },
-      "id": 1
-  }
-  ```
-
-## Error Codes
-
-- `-32700`: Parse error
-- `-32600`: Invalid request
-- `-32601`: Method not found
-- `-32602`: Invalid params
-- `-32603`: Internal error
-
-## Logging
-
-All MCP requests and responses are logged if logging is enabled. Check your Laravel logs:
-
-```bash
-tail -f storage/logs/laravel.log
 ```
+requests(action="stats", route_type="api", period="1h")
+requests(action="slow", route_type="web", min_duration=1000)
+```
+
+### queries
+Database query analysis and N+1 detection.
+
+```
+queries(action="stats", period="1h")
+queries(action="slow", min_time=100)
+queries(action="duplicates")
+```
+
+### exceptions
+Exception and error tracking.
+
+```
+exceptions(action="list", period="24h")
+exceptions(action="stats")
+```
+
+### jobs
+Queue job monitoring.
+
+```
+jobs(action="stats", period="1h")
+jobs(action="failed")
+```
+
+### cache
+Cache operation analysis.
+
+```
+cache(action="stats", period="1h")
+```
+
+### logs
+Application log entries.
+
+```
+logs(action="list", level="error", period="1h")
+```
+
+## Quick Examples
+
+**Health check:**
+```
+telescope_overview(period="1h", route_type="all")
+```
+
+**API-specific monitoring:**
+```
+telescope_overview(period="1h", route_type="api")
+requests(action="stats", route_type="api")
+```
+
+**Find slow endpoints:**
+```
+requests(action="slow", route_type="api", min_duration=500)
+```
+
+**Detect N+1 queries:**
+```
+queries(action="duplicates", period="1h")
+```
+
+## Health Scoring
+
+Health scores (0-100) are calculated with context-aware thresholds:
+
+| Score | Status | Description |
+|-------|--------|-------------|
+| 90-100 | healthy | Everything optimal |
+| 70-89 | good | Minor issues |
+| 50-69 | warning | Needs attention |
+| 0-49 | critical | Immediate action required |
+
+API and web routes use different thresholds - APIs are judged more strictly.
 
 ## Requirements
 
-- PHP 8.1 or higher
+- PHP 8.1+
 - Laravel 10, 11, or 12
+- Laravel Telescope
 
 ## License
 
 MIT
-
-## Credits
-
-Based on the [Laravel Telescope MCP](https://github.com/lucianotonet/laravel-telescope-mcp) architecture by Luciano Tonet.
-
-## Contributing
-
-Feel free to extend this package with more tools and features!
