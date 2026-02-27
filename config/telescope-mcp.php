@@ -131,6 +131,24 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Data Source
+    |--------------------------------------------------------------------------
+    |
+    | Control where MCP tools read Telescope data from.
+    | - 'live': Query the live Telescope database (default)
+    | - 'file': Query from an exported SQLite file (avoids OOM on large datasets)
+    |
+    | Use `php artisan telescope-mcp:export` to generate the SQLite file.
+    |
+    */
+    'data_source' => env('TELESCOPE_MCP_DATA_SOURCE', 'live'),
+
+    'file_source' => [
+        'path' => env('TELESCOPE_MCP_FILE_PATH', null),
+    ],
+
+    /*
+    |--------------------------------------------------------------------------
     | Overview Tool Configuration
     |--------------------------------------------------------------------------
     |

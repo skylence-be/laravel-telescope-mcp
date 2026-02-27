@@ -219,10 +219,10 @@ final class QueriesTool extends TelescopeAbstractTool
                 ]);
             }
 
-            $times = array_filter(
-                array_map(fn ($e) => $e['content']['time'] ?? 0, $entries),
+            $times = array_values(array_filter(
+                array_map(fn ($e) => (float) ($e['content']['time'] ?? 0), $entries),
                 fn ($t) => is_numeric($t)
-            );
+            ));
 
             // Ensure we have valid time data
             if (empty($times)) {

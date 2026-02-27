@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Skylence\TelescopeMcp\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Skylence\TelescopeMcp\Support\ResolvesTelescopeConnection;
 
 class TelescopePruneCommand extends Command
 {
+    use ResolvesTelescopeConnection;
+
     /**
      * The name and signature of the console command.
      */
@@ -27,6 +29,13 @@ class TelescopePruneCommand extends Command
      */
     public function handle(): int
     {
+        if ($this->isFileDataSource()) {
+            $this->error('Cannot prune entries when using file data source (TELESCOPE_MCP_DATA_SOURCE=file).');
+            $this->error('Run this command against the live database instead.');
+
+            return self::FAILURE;
+        }
+
         $hours = $this->option('hours') ?? 168; // Default 7 days
         $type = $this->option('type');
         $force = $this->option('force');
@@ -47,7 +56,7 @@ class TelescopePruneCommand extends Command
 
             $this->info("Pruning Telescope entries older than {$cutoffTime}...");
 
-            $query = DB::table('telescope_entries')
+            $query = $this->telescopeTable()
                 ->where('created_at', '<', $cutoffTime);
 
             if ($type) {

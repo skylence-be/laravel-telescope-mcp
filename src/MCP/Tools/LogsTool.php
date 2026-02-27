@@ -4,8 +4,12 @@ declare(strict_types=1);
 
 namespace Skylence\TelescopeMcp\MCP\Tools;
 
+use Skylence\TelescopeMcp\Support\ResolvesTelescopeConnection;
+
 final class LogsTool extends TelescopeAbstractTool
 {
+    use ResolvesTelescopeConnection;
+
     protected string $entryType = 'log';
 
     public function getShortName(): string
@@ -82,39 +86,18 @@ final class LogsTool extends TelescopeAbstractTool
      */
     protected function pruneLogs(array $arguments): array
     {
+        if ($this->isFileDataSource()) {
+            return $this->formatError('Cannot prune logs when using file data source. Modify the live database instead.');
+        }
+
         try {
             $period = $arguments['older_than'] ?? '30d';
-            $cutoffTime = $this->getPeriodCutoffTime($period);
+            $cutoffTime = date('Y-m-d H:i:s', $this->getPeriodCutoffTime($period));
 
-            // Get all log entries
-            $allEntries = $this->getEntries(['limit' => 100000]);
-
-            $entriesToDelete = [];
-            foreach ($allEntries as $entry) {
-                $createdAt = $entry->createdAt ?? null;
-                if ($createdAt) {
-                    $entryTimestamp = method_exists($createdAt, 'timestamp')
-                        ? $createdAt->timestamp
-                        : strtotime((string) $createdAt);
-
-                    if ($entryTimestamp < $cutoffTime) {
-                        $entriesToDelete[] = $entry->uuid ?? $entry->id;
-                    }
-                }
-            }
-
-            // Delete entries using storage
-            $deletedCount = 0;
-            foreach ($entriesToDelete as $uuid) {
-                try {
-                    \DB::table('telescope_entries')
-                        ->where('uuid', $uuid)
-                        ->delete();
-                    $deletedCount++;
-                } catch (\Exception $e) {
-                    // Continue deleting others
-                }
-            }
+            $deletedCount = $this->telescopeTable()
+                ->where('type', 'log')
+                ->where('created_at', '<', $cutoffTime)
+                ->delete();
 
             return $this->formatResponse(
                 json_encode([
@@ -122,7 +105,7 @@ final class LogsTool extends TelescopeAbstractTool
                     'message' => "Pruned {$deletedCount} log entries older than {$period}",
                     'deleted_count' => $deletedCount,
                     'period' => $period,
-                    'cutoff_timestamp' => $cutoffTime,
+                    'cutoff_time' => $cutoffTime,
                 ], JSON_PRETTY_PRINT)
             );
         } catch (\Exception $e) {

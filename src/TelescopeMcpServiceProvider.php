@@ -7,7 +7,10 @@ namespace Skylence\TelescopeMcp;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Telescope\Contracts\EntriesRepository;
+use Laravel\Telescope\Storage\DatabaseEntriesRepository;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeClearCommand;
+use Skylence\TelescopeMcp\Console\Commands\TelescopeExportCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeMcpCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopePruneCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeStatsCommand;
@@ -31,6 +34,8 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
             __DIR__.'/../config/telescope-mcp.php',
             'telescope-mcp'
         );
+
+        $this->configureFileDataSource();
 
         // Register Logger as singleton with dual channels
         $this->app->singleton(Logger::class, function ($app) {
@@ -110,6 +115,7 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
                 TelescopePruneCommand::class,
                 TelescopeStatsCommand::class,
                 TelescopeClearCommand::class,
+                TelescopeExportCommand::class,
             ]);
         }
     }
@@ -140,6 +146,40 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
             'days' => 30,
             'permission' => 0644,
         ]);
+    }
+
+    /**
+     * Configure file-based data source if enabled.
+     *
+     * Registers a SQLite connection and rebinds the EntriesRepository
+     * after Telescope's provider has registered its own binding.
+     */
+    protected function configureFileDataSource(): void
+    {
+        $dataSource = config('telescope-mcp.data_source', 'live');
+        $filePath = config('telescope-mcp.file_source.path');
+
+        if ($dataSource !== 'file' || ! $filePath || ! file_exists($filePath)) {
+            return;
+        }
+
+        // Register dynamic SQLite database connection
+        Config::set('database.connections.telescope_mcp_sqlite', [
+            'driver' => 'sqlite',
+            'database' => $filePath,
+            'prefix' => '',
+            'foreign_key_constraints' => false,
+        ]);
+
+        // Rebind EntriesRepository after Telescope's provider has registered its own binding
+        $this->app->booted(function () {
+            $this->app->singleton(EntriesRepository::class, function ($app) {
+                return new DatabaseEntriesRepository(
+                    'telescope_mcp_sqlite',
+                    config('telescope.storage.database.chunk', 1000)
+                );
+            });
+        });
     }
 
     /**

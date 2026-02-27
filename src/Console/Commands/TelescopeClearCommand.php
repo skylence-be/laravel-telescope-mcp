@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Skylence\TelescopeMcp\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Skylence\TelescopeMcp\Support\ResolvesTelescopeConnection;
 
 class TelescopeClearCommand extends Command
 {
+    use ResolvesTelescopeConnection;
+
     /**
      * The name and signature of the console command.
      */
@@ -26,6 +28,13 @@ class TelescopeClearCommand extends Command
      */
     public function handle(): int
     {
+        if ($this->isFileDataSource()) {
+            $this->error('Cannot clear entries when using file data source (TELESCOPE_MCP_DATA_SOURCE=file).');
+            $this->error('Run this command against the live database instead.');
+
+            return self::FAILURE;
+        }
+
         $type = $this->option('type');
         $force = $this->option('force');
 
@@ -41,7 +50,7 @@ class TelescopeClearCommand extends Command
         }
 
         try {
-            $query = DB::table('telescope_entries');
+            $query = $this->telescopeTable();
 
             if ($type) {
                 $query->where('type', $type);

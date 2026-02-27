@@ -4,10 +4,12 @@ declare(strict_types=1);
 
 namespace Skylence\TelescopeMcp\MCP\Tools;
 
-use Illuminate\Support\Facades\DB;
+use Skylence\TelescopeMcp\Support\ResolvesTelescopeConnection;
 
 final class MaintenanceTool extends AbstractTool
 {
+    use ResolvesTelescopeConnection;
+
     public function getShortName(): string
     {
         return 'maintenance';
@@ -69,19 +71,20 @@ final class MaintenanceTool extends AbstractTool
     {
         try {
             $stats = [
-                'total_entries' => DB::table('telescope_entries')->count(),
+                'total_entries' => $this->telescopeTable()->count(),
                 'by_type' => [],
-                'oldest_entry' => DB::table('telescope_entries')
+                'oldest_entry' => $this->telescopeTable()
                     ->orderBy('created_at', 'asc')
                     ->value('created_at'),
-                'newest_entry' => DB::table('telescope_entries')
+                'newest_entry' => $this->telescopeTable()
                     ->orderBy('created_at', 'desc')
                     ->value('created_at'),
+                'data_source' => config('telescope-mcp.data_source', 'live'),
             ];
 
             // Count by type
-            $typeCounts = DB::table('telescope_entries')
-                ->select('type', DB::raw('count(*) as count'))
+            $typeCounts = $this->telescopeTable()
+                ->selectRaw('type, count(*) as count')
                 ->groupBy('type')
                 ->get();
 
@@ -103,6 +106,10 @@ final class MaintenanceTool extends AbstractTool
      */
     protected function pruneEntries(array $params): array
     {
+        if ($this->isFileDataSource()) {
+            return $this->formatError('Cannot prune entries when using file data source. Modify the live database instead.');
+        }
+
         if (empty($params['confirm'])) {
             return $this->formatError('Destructive operation requires confirm=true parameter');
         }
@@ -113,7 +120,7 @@ final class MaintenanceTool extends AbstractTool
 
             $cutoffTime = $this->calculateCutoffTime($olderThan);
 
-            $query = DB::table('telescope_entries')
+            $query = $this->telescopeTable()
                 ->where('created_at', '<', $cutoffTime);
 
             if ($entryType !== 'all') {
@@ -143,6 +150,10 @@ final class MaintenanceTool extends AbstractTool
      */
     protected function clearAllEntries(array $params): array
     {
+        if ($this->isFileDataSource()) {
+            return $this->formatError('Cannot clear entries when using file data source. Modify the live database instead.');
+        }
+
         if (empty($params['confirm'])) {
             return $this->formatError('Destructive operation requires confirm=true parameter');
         }
@@ -150,7 +161,7 @@ final class MaintenanceTool extends AbstractTool
         try {
             $entryType = $params['entry_type'] ?? 'all';
 
-            $query = DB::table('telescope_entries');
+            $query = $this->telescopeTable();
 
             if ($entryType !== 'all') {
                 $query->where('type', $entryType);

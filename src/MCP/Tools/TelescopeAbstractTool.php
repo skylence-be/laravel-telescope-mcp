@@ -297,7 +297,7 @@ abstract class TelescopeAbstractTool extends AbstractTool
         }
 
         $durations = array_map(function ($entry) {
-            return $entry['content']['duration'] ?? 0;
+            return (float) ($entry['content']['duration'] ?? 0);
         }, $entries);
 
         return [
@@ -317,13 +317,14 @@ abstract class TelescopeAbstractTool extends AbstractTool
     protected function percentile(array $values, int $percentile): float
     {
         if (empty($values)) {
-            return 0;
+            return 0.0;
         }
 
+        $values = array_map('floatval', $values);
         sort($values);
-        $index = ceil(($percentile / 100) * count($values)) - 1;
+        $index = (int) (ceil(($percentile / 100) * count($values)) - 1);
 
-        return $values[$index] ?? 0;
+        return $values[$index] ?? 0.0;
     }
 
     /**

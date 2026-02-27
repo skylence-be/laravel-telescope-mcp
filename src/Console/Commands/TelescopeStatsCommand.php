@@ -5,10 +5,12 @@ declare(strict_types=1);
 namespace Skylence\TelescopeMcp\Console\Commands;
 
 use Illuminate\Console\Command;
-use Illuminate\Support\Facades\DB;
+use Skylence\TelescopeMcp\Support\ResolvesTelescopeConnection;
 
 class TelescopeStatsCommand extends Command
 {
+    use ResolvesTelescopeConnection;
+
     /**
      * The name and signature of the console command.
      */
@@ -49,21 +51,21 @@ class TelescopeStatsCommand extends Command
      */
     protected function getStats(): array
     {
-        $totalEntries = DB::table('telescope_entries')->count();
+        $totalEntries = $this->telescopeTable()->count();
 
-        $typeCounts = DB::table('telescope_entries')
-            ->select('type', DB::raw('count(*) as count'))
+        $typeCounts = $this->telescopeTable()
+            ->selectRaw('type, count(*) as count')
             ->groupBy('type')
             ->orderByDesc('count')
             ->get()
             ->pluck('count', 'type')
             ->toArray();
 
-        $oldestEntry = DB::table('telescope_entries')
+        $oldestEntry = $this->telescopeTable()
             ->orderBy('created_at', 'asc')
             ->value('created_at');
 
-        $newestEntry = DB::table('telescope_entries')
+        $newestEntry = $this->telescopeTable()
             ->orderBy('created_at', 'desc')
             ->value('created_at');
 
@@ -128,9 +130,24 @@ class TelescopeStatsCommand extends Command
      */
     protected function getTableSize(): ?string
     {
+        // For file-based data source, return the file size
+        if ($this->isFileDataSource()) {
+            $filePath = config('telescope-mcp.file_source.path');
+            if ($filePath && file_exists($filePath)) {
+                $bytes = filesize($filePath);
+
+                return $this->formatBytes($bytes);
+            }
+
+            return null;
+        }
+
         try {
+            $connection = $this->getTelescopeConnectionName();
+            $db = $connection ? \DB::connection($connection) : \DB::connection();
+
             // MySQL/MariaDB
-            $size = DB::select(
+            $size = $db->select(
                 "SELECT ROUND(((data_length + index_length) / 1024 / 1024), 2) AS size_mb
                 FROM information_schema.TABLES
                 WHERE table_schema = DATABASE()
@@ -145,5 +162,22 @@ class TelescopeStatsCommand extends Command
         }
 
         return null;
+    }
+
+    protected function formatBytes(int|false $bytes): string
+    {
+        if ($bytes === false || $bytes === 0) {
+            return '0 B';
+        }
+
+        $units = ['B', 'KB', 'MB', 'GB'];
+        $i = 0;
+
+        while ($bytes >= 1024 && $i < count($units) - 1) {
+            $bytes /= 1024;
+            $i++;
+        }
+
+        return round($bytes, 2).' '.$units[$i];
     }
 }
