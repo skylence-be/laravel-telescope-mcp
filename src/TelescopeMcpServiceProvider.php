@@ -102,11 +102,8 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
         // Register middleware
         $this->app['router']->aliasMiddleware('telescope-mcp.auth', AuthenticateMcp::class);
 
-        // Register stdio MCP routes (Laravel MCP)
+        // Register MCP routes (stdio + Streamable HTTP via Laravel MCP)
         $this->loadRoutesFrom(__DIR__.'/../routes/ai.php');
-
-        // Register HTTP MCP routes
-        $this->registerHttpRoutes();
 
         // Register artisan commands
         if ($this->app->runningInConsole()) {
