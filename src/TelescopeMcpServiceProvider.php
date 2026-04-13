@@ -7,6 +7,7 @@ namespace Skylence\TelescopeMcp;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
+use Laravel\Mcp\Facades\Mcp;
 use Laravel\Telescope\Contracts\EntriesRepository;
 use Laravel\Telescope\Storage\DatabaseEntriesRepository;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeClearCommand;
@@ -16,6 +17,7 @@ use Skylence\TelescopeMcp\Console\Commands\TelescopePruneCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeStatsCommand;
 use Skylence\TelescopeMcp\Http\Middleware\AuthenticateMcp;
 use Skylence\TelescopeMcp\MCP\TelescopeMcpServer;
+use Skylence\TelescopeMcp\MCP\TelescopeServer;
 use Skylence\TelescopeMcp\Services\PaginationManager;
 use Skylence\TelescopeMcp\Services\PerformanceAnalyzer;
 use Skylence\TelescopeMcp\Services\QueryAnalyzer;
@@ -102,7 +104,10 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
         // Register middleware
         $this->app['router']->aliasMiddleware('telescope-mcp.auth', AuthenticateMcp::class);
 
-        // Register MCP routes (stdio + Streamable HTTP via Laravel MCP)
+        // Register MCP stdio server directly (not via routes file, which doesn't load in console context)
+        Mcp::local('telescope', TelescopeServer::class);
+
+        // Register MCP Streamable HTTP routes
         $this->loadRoutesFrom(__DIR__.'/../routes/ai.php');
 
         // Register artisan commands
