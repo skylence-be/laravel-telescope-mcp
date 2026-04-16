@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Route;
 use Illuminate\Support\ServiceProvider;
 use Laravel\Mcp\Facades\Mcp;
+use Skylence\TelescopeMcp\Console\Commands\InstallCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeClearCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopeMcpCommand;
 use Skylence\TelescopeMcp\Console\Commands\TelescopePruneCommand;
@@ -108,6 +109,7 @@ final class TelescopeMcpServiceProvider extends ServiceProvider
         // Register artisan commands
         if ($this->app->runningInConsole()) {
             $this->commands([
+                InstallCommand::class,
                 TelescopeMcpCommand::class,
                 TelescopePruneCommand::class,
                 TelescopeStatsCommand::class,
